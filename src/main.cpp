@@ -13,33 +13,6 @@
 #define LED 2
 
 bool isConnected = false;
-WiFiServer server(80);
-
-String html = "<!DOCTYPE html> \
-<html lang=\"en\"> \
-<head> \
-    <meta charset=\"UTF-8\"> \
-    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"> \
-    <title>Google OAuth Redirect</title> \
-    <script> \
-        function redirectToGoogleOAuth() { \
-            const clientId = document.getElementById('clientIdInput').value; // Get clientId from the text field \n \
-            const redirectUri = \"http://espcal\"; // Replace with your valid redirect URI \n \
-            const scope = \"https://www.googleapis.com/auth/userinfo.profile\"; \n \
-            const responseType = \"code\"; // Use \"code\" for authorization code flow \n \
-            const googleOAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=${responseType}&scope=${scope}`; \
-            window.open(googleOAuthUrl, '_blank'); \
-        } \
-    </script> \
-</head> \
-<body> \
-    <h1>Google OAuth Redirect</h1> \
-    <label for=\"clientIdInput\">Enter Client ID:</label> \
-    <input type=\"text\" id=\"clientIdInput\" placeholder=\"Enter your Client ID\" /> \
-    <button onclick=\"redirectToGoogleOAuth()\">Redirect to Google OAuth</button> \
-</body> \
-</html>";
-
 
 void sendPostRequest(String client_id)
 {
@@ -140,16 +113,5 @@ void loop()
 		digitalWrite(LED, !digitalRead(LED));
 		delay(500);
 		isConnected = false;
-	}
-
-	WiFiClient client = server.available(); // Check for incoming clients
-    if (client)
-    {
-		String request = client.readStringUntil('\r'); // Read the request
-        client.flush();
-
-		client.println(html);
-
-		client.stop(); // Close the connection
 	}
 }
