@@ -1,6 +1,5 @@
-#include "oauth.h"
+#include "auth_manager.h"
 #include <HTTPClient.h>
-#include <ArduinoJson.h>
 #include <EEPROM.h>
 
 #define EEPROM_SIZE 512
@@ -14,19 +13,20 @@ const String headerName = "Content-Type";
 const String headerValue = "application/x-www-form-urlencoded";
 
 
-OAuth::OAuth(String _clientId, String _clientSecret)
+AuthManager::AuthManager(String _clientId, String _clientSecret)
 {
     clientId = _clientId;
     clientSecret = _clientSecret;
     accessToken = "";
     refreshToken = "";
+    tokenLifetime = 0u;
 }
 
-OAuth::~OAuth()
+AuthManager::~AuthManager()
 {
 }
 
-void OAuth::init()
+void AuthManager::init()
 {
     readRefreshToken();
     if (!refreshToken.isEmpty()) {
@@ -39,14 +39,16 @@ void OAuth::init()
     authWithAccessToken();
 }
 
-bool OAuth::authWithAccessToken()
+bool AuthManager::authWithAccessToken()
 {
     HTTPClient http;
     JsonDocument response;
     String postData = "client_id=" + clientId + "&scope=" + scope;
+    String response_string;
+    String deviceCode;
+    uint16_t interval = 5000;
 
     /* Request device and user codes */
-    
     http.begin(codeURL);
     http.addHeader("Content-Type", "application/x-www-form-urlencoded");
 
@@ -54,11 +56,16 @@ bool OAuth::authWithAccessToken()
 
     if (httpResponseCode == 200)
     {
-        String response_string = http.getString();
+        response_string = http.getString();
 		deserializeJson(response, response_string);
         Serial.println("HTTP Response Code: " + String(httpResponseCode));
         Serial.println("Response: " + response_string);
         http.end();
+
+        if(response["interval"].is<uint16_t>())
+        {
+            interval = response["interval"].as<uint16_t>() * 1000;
+        }
     }
     else
     {
@@ -68,16 +75,14 @@ bool OAuth::authWithAccessToken()
     }
 
     /* Poll authorization server */
-    String response_string;
-
     do
     {
-        delay(5000);
+        delay(interval);
 
         http.begin(tokenURL);
         http.addHeader("Content-Type", "application/x-www-form-urlencoded");
 
-        String deviceCode = response["device_code"];
+        deviceCode = response["device_code"].as<String>();
 
 		postData = "client_id=" + clientId + "&client_secret=" + clientSecret + "&device_code=" + deviceCode + "&grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Adevice_code";
 
@@ -93,16 +98,25 @@ bool OAuth::authWithAccessToken()
 
     deserializeJson(response, response_string);
 
-    // Save access and refresh tokens
-    accessToken = response["access_token"].as<String>();
-    refreshToken = response["refresh_token"].as<String>();
-    saveRefreshToken(); // Save to EEPROM
+    if(response["access_token"].is<String>() && 
+       response["refresh_token"].is<String>() &&
+       response["expires_in"].is<uint16_t>())
+    {
+        accessToken = response["access_token"].as<String>();
+        refreshToken = response["refresh_token"].as<String>();
+        tokenLifetime = response["expires_in"];
+        saveRefreshToken(); // Save to EEPROM
+    }
+    else
+    {
+        return false;
+    }
 
     return true;
     
 }
 
-bool OAuth::authWithRefreshToken()
+bool AuthManager::authWithRefreshToken()
 {
      HTTPClient http;
     http.begin("https://oauth2.googleapis.com/token");
@@ -118,10 +132,17 @@ bool OAuth::authWithRefreshToken()
         Serial.println("Authenticated using refresh token.");
         Serial.println("Response: " + response_string);
 
-        // Save access and refresh tokens
-        accessToken = response["access_token"].as<String>();
-        refreshToken = response["refresh_token"].as<String>();
-        saveRefreshToken(); // Save to EEPROM
+        // Save access tokens
+        if(response["access_token"].is<String>() &&
+           response["expires_in"].is<uint16_t>())
+        {
+            accessToken = response["access_token"].as<String>();
+            tokenLifetime = response["expires_in"];
+        }
+        else
+        {
+            return false;
+        }
 
         http.end();
         return true;
@@ -134,7 +155,7 @@ bool OAuth::authWithRefreshToken()
 
 
 /* TODO - better memory management */
-void OAuth::saveRefreshToken()
+void AuthManager::saveRefreshToken()
 {
     EEPROM.begin(EEPROM_SIZE);
     for (int i = 0; i < refreshToken.length(); i++) {
@@ -144,7 +165,7 @@ void OAuth::saveRefreshToken()
     EEPROM.commit();
 }
 
-void OAuth::readRefreshToken()
+void AuthManager::readRefreshToken()
 {
     EEPROM.begin(EEPROM_SIZE);
     String token = "";

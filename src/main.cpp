@@ -7,8 +7,8 @@
 #include "config.h"
 #include "SPI.h"
 #include "TFT_eSPI.h"
-#include "oauth/oauth.h"
-
+#include "auth_manager/auth_manager.h"
+#include "time.h"
 
 #define LED 2
 
@@ -21,7 +21,64 @@ WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP);
 
 TFT_eSPI tft = TFT_eSPI();  // Invoke library
-OAuth oauth = OAuth(CLIENT_ID, CLIENT_SECRET);
+AuthManager oauth = AuthManager(CLIENT_ID, CLIENT_SECRET);
+
+
+String formatDatetime(String stringDate) {
+    int tIndex = stringDate.indexOf('T');
+    if (tIndex != -1) {
+        String datePart = stringDate.substring(0, tIndex);
+        String timePart = stringDate.substring(tIndex + 1);
+
+        // Remove 'Z' if present at the end
+        if (timePart.endsWith("Z")) {
+            timePart = timePart.substring(0, timePart.length() - 1);
+        }
+        // Remove timezone offset if present (e.g., +02:00 or -05:00)
+        int plusIndex = timePart.indexOf('+');
+        int minusIndex = timePart.indexOf('-');
+        int tzIndex = (plusIndex != -1) ? plusIndex : ((minusIndex > 0) ? minusIndex : -1);
+        if (tzIndex != -1) {
+            timePart = timePart.substring(0, tzIndex);
+        }
+        // Remove milliseconds if present (e.g., 15:30:00.000)
+        int dotIndex = timePart.indexOf('.');
+        if (dotIndex != -1) {
+            timePart = timePart.substring(0, dotIndex);
+        }
+
+        // Remove seconds if present (e.g., 15:30:00 -> 15:30)
+        int colonIndex = timePart.indexOf(':');
+        if (colonIndex != -1) {
+            int secondColon = timePart.indexOf(':', colonIndex + 1);
+            if (secondColon != -1) {
+                timePart = timePart.substring(0, secondColon);
+            }
+        }
+
+        // Convert datePart from yyyy-mm-dd to dd-mm-yyyy
+        int firstDash = datePart.indexOf('-');
+        int secondDash = datePart.indexOf('-', firstDash + 1);
+        String year = datePart.substring(0, firstDash);
+        String month = datePart.substring(firstDash + 1, secondDash);
+        String day = datePart.substring(secondDash + 1);
+
+        String formattedDate = day + "-" + month + "-" + year;
+        return formattedDate + " " + timePart;
+    } else {
+        // Only date is present, convert yyyy-mm-dd to dd-mm-yyyy
+        int firstDash = stringDate.indexOf('-');
+        int secondDash = stringDate.indexOf('-', firstDash + 1);
+        if (firstDash != -1 && secondDash != -1) {
+            String year = stringDate.substring(0, firstDash);
+            String month = stringDate.substring(firstDash + 1, secondDash);
+            String day = stringDate.substring(secondDash + 1);
+            return day + "-" + month + "-" + year;
+        } else {
+            return stringDate;
+        }
+    }
+}
 
 void calendarRequest() {
     HTTPClient http;
@@ -36,13 +93,15 @@ void calendarRequest() {
 
     deserializeJson(response, response_string);
 
+    tft.fillScreen(TFT_BLACK);
+    tft.setCursor(0,0);
     for(int i = 0; i < response["items"].size(); i++)
     {
-        tft.println(response["items"][i]["summary"].as<String>());
-        if(response["items"][i]["start"].containsKey("dateTime"))
-            tft.println(response["items"][i]["start"]["dateTime"].as<String>());
+        if(response["items"][i]["start"]["dateTime"].is<String>())
+            tft.println(formatDatetime(response["items"][i]["start"]["dateTime"].as<String>()));
         else
-            tft.println(response["items"][i]["start"]["date"].as<String>());
+            tft.println(formatDatetime(response["items"][i]["start"]["date"].as<String>()));
+        tft.println(response["items"][i]["summary"].as<String>());
     }
 }
 
@@ -60,6 +119,10 @@ void setup()
     tft.setCursor(0,0);
     tft.setTextFont(2);
     // tft.setTextSize(2);
+    tft.println("Connecting to:");
+    tft.setTextColor(TFT_BLUE);
+    tft.println(WIFI_SSID);
+    tft.setTextColor(TFT_WHITE);
 
     while (WiFi.status() != WL_CONNECTED)
     {
@@ -67,6 +130,7 @@ void setup()
         Serial.println("Connecting to WiFi...");
     }
 
+    tft.println("WiFi connected!");
     Serial.println("WiFi connected!");
     Serial.print("ESP32 IP Address: ");
     Serial.println(WiFi.localIP());
@@ -87,10 +151,12 @@ void loop()
             timeClient.forceUpdate();
         }
         formattedDate = timeClient.getFormattedDate();
-        Serial.println(formattedDate);
+        Serial.println(formatDatetime(formattedDate));
+        tft.println(formatDatetime(formattedDate));
 
         // Send POST request
         oauth.init();
+        tft.println("Authenticated!");
         calendarRequest();
 	}
 	

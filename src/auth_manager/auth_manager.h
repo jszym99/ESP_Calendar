@@ -1,20 +1,24 @@
-#ifndef OAUTH_H
-#define OAUTH_H
+#ifndef AUTH_MANAGER_H
+#define AUTH_MANAGER_H
 #include <Arduino.h>
+#include <ArduinoJson.h>
 
-class OAuth
+class AuthManager
 {
 private:
     String accessToken;
     String refreshToken;
     String clientId;
     String clientSecret;
+    uint16_t tokenLifetime;
+
 
     void saveRefreshToken();
     void readRefreshToken();
+    bool checkResponse(JsonDocument response);
 public:
-    OAuth(String _clientId, String _clientSecret);
-    ~OAuth();
+    AuthManager(String _clientId, String _clientSecret);
+    ~AuthManager();
 
     void init();
     bool authWithAccessToken();
@@ -24,4 +28,4 @@ public:
 };
 
 
-#endif /* OAUTH_H */
+#endif /* AUTH_MANAGER_H */
