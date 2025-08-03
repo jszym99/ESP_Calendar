@@ -4,24 +4,24 @@
 #include <ArduinoJson.h>
 #include <NTPClient.h>
 #include <WiFiUdp.h>
-#include "config.h"
 #include "SPI.h"
 #include "TFT_eSPI.h"
+
+#include "config.h"
 #include "auth_manager/auth_manager.h"
-#include "time.h"
+#include "cal_manager/cal_manager.h"
+#include "utils/utils.h"
 
 #define LED 2
 
-
 bool isConnected = false;
-String accessToken;
-String formattedDate;
 
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP);
 
 TFT_eSPI tft = TFT_eSPI();  // Invoke library
 AuthManager oauth = AuthManager(CLIENT_ID, CLIENT_SECRET);
+CalManager calendar = CalManager([](){ return oauth.getAccessToken();});
 
 
 String formatDatetime(String stringDate) {
@@ -80,35 +80,11 @@ String formatDatetime(String stringDate) {
     }
 }
 
-void calendarRequest() {
-    HTTPClient http;
-    JsonDocument response;
-	http.begin("https://www.googleapis.com/calendar/v3/calendars/primary/events?maxResults=5&orderBy=startTime&singleEvents=true&timeMin=" + formattedDate);
-    http.addHeader("Authorization",  "Bearer " + oauth.getAccessToken());
-
-    int httpResponseCode = http.GET();
-    String response_string = http.getString();
-    Serial.println("HTTP Response Code: " + String(httpResponseCode));
-    Serial.println("Response: " + response_string);
-
-    deserializeJson(response, response_string);
-
-    tft.fillScreen(TFT_BLACK);
-    tft.setCursor(0,0);
-    for(int i = 0; i < response["items"].size(); i++)
-    {
-        if(response["items"][i]["start"]["dateTime"].is<String>())
-            tft.println(formatDatetime(response["items"][i]["start"]["dateTime"].as<String>()));
-        else
-            tft.println(formatDatetime(response["items"][i]["start"]["date"].as<String>()));
-        tft.println(response["items"][i]["summary"].as<String>());
-    }
-}
-
-
 void setup()
 {
 	pinMode(OUTPUT, LED);
+    
+    // Start WiFi connection
 	WiFi.setHostname("ESP32");
 	WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 
@@ -120,7 +96,6 @@ void setup()
     tft.setTextFont(2);
     // tft.setTextSize(2);
     tft.println("Connecting to:");
-    tft.setTextColor(TFT_BLUE);
     tft.println(WIFI_SSID);
     tft.setTextColor(TFT_WHITE);
 
@@ -130,11 +105,14 @@ void setup()
         Serial.println("Connecting to WiFi...");
     }
 
+    // Print Network status
+    tft.setTextColor(TFT_GREEN);
     tft.println("WiFi connected!");
     Serial.println("WiFi connected!");
     Serial.print("ESP32 IP Address: ");
     Serial.println(WiFi.localIP());
 
+    // Start NTP
     timeClient.begin();
     timeClient.setTimeOffset(7200);
 }
@@ -147,17 +125,41 @@ void loop()
 		digitalWrite(LED, HIGH);
 		isConnected = true;
 
+        // Fetch time from NTP
         while(!timeClient.update()) {
             timeClient.forceUpdate();
         }
-        formattedDate = timeClient.getFormattedDate();
-        Serial.println(formatDatetime(formattedDate));
-        tft.println(formatDatetime(formattedDate));
 
-        // Send POST request
+        // Update system time
+        time_t systemTime = timeClient.getEpochTime();
+        setTime(systemTime);
+        tft.setTextColor(TFT_WHITE);
+        Serial.println(DATETIME_STR(now(), false));
+        tft.println(DATETIME_STR(now(), false));
+
+        // Authenticate
         oauth.init();
+        tft.setTextColor(TFT_GREEN);
         tft.println("Authenticated!");
-        calendarRequest();
+
+        // Get events
+        calendar.fetchEvents();
+        std::vector<eventData> events = calendar.getEvents();
+
+        // Display event error
+        if(events.empty())
+        {
+            tft.setTextColor(TFT_RED);
+            tft.println("No events found!");
+        }
+
+        // Display events
+        tft.setTextColor(TFT_WHITE);
+        for(int i = 0; i < events.size(); i++)
+        {
+            tft.println(DATETIME_STR(events[i].startDate, events[i].isAllDay));
+            tft.println(events[i].summary);
+        }
 	}
 	
 	if(WiFi.status() != WL_CONNECTED)
