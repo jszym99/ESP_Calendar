@@ -27,6 +27,8 @@ void CalManager::fetchEvents()
     String response_string;
     eventData tmp;
     String accessToken = tokenFunction(); // TODO: fallback on empty string
+    
+    const String calendarId = "primary";
 
     // Convert current unix time to ISO 8601
     time_t currentTime = now();
@@ -35,8 +37,14 @@ void CalManager::fetchEvents()
     strftime(buf, sizeof(buf), "%Y-%m-%dT%H:%M:%SZ", tm);
     String formattedTime = String(buf);
 
-    // TODO: Parametrize URL
-	http.begin("https://www.googleapis.com/calendar/v3/calendars/primary/events?maxResults=5&orderBy=startTime&singleEvents=true&timeMin=" + formattedTime);
+
+    // Construct URL
+    const String URL = "https://www.googleapis.com/calendar/v3/calendars/" +
+        calendarId + "/events?maxResults=" + String(eventCount) +
+        "&orderBy=startTime&singleEvents=true&timeMin=" + formattedTime;
+
+        http.begin("https://www.googleapis.com/calendar/v3/calendars/primary/events?maxResults=5&orderBy=startTime&singleEvents=true&timeMin=" + formattedTime);
+	http.begin(URL);
     http.addHeader("Authorization",  "Bearer " + accessToken);
 
     // TODO: Fallback on request error
@@ -61,6 +69,16 @@ void CalManager::fetchEvents()
         else if (response["items"][i]["start"]["dateTime"].is<String>())
         {
             tmp.startDate = datetimeToSeconds(response["items"][i]["start"]["dateTime"].as<String>());
+            tmp.isAllDay = false;
+        }
+        if(response["items"][i]["end"]["date"].is<String>())
+        {
+            tmp.endDate = datetimeToSeconds(response["items"][i]["end"]["date"].as<String>());
+            tmp.isAllDay = true;
+        }
+        else if (response["items"][i]["end"]["dateTime"].is<String>())
+        {
+            tmp.endDate = datetimeToSeconds(response["items"][i]["end"]["dateTime"].as<String>());
             tmp.isAllDay = false;
         }
 

@@ -5,12 +5,13 @@
 #include <vector>
 #include "auth_manager/auth_manager.h"
 
-#define EVENT_COUNT 5
+constexpr uint8_t eventCount = 5;
 
 struct eventData
 {
     String summary;
     time_t startDate;
+    time_t endDate;
     bool isAllDay;
 
 };

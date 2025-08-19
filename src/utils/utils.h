@@ -9,10 +9,10 @@
  * @param b true if exclude time from date
  * 
  */
-#define DATETIME_STR(t, b) String(dayShortStr(weekday(t))) + ", " + \
+#define DATETIME_STR(t, y, b) String(dayShortStr(weekday(t))) + ", " + \
                        (day(t) < 10 ? "0" : "") + String(day(t)) + " " + \
                        String(monthShortStr(month(t))) + " " + \
-                       String(year(t)) + " " + \
+                       (y ? (String(year(t)) + " ") : "") + \
                        (!b ? (hour(t) < 10 ? "0" : "") + String(hour(t)) + ":" + \
                        (minute(t) < 10 ? "0" : "") + String(minute(t)) : "")
 
