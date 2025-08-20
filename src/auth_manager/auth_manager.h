@@ -25,6 +25,7 @@ public:
     bool authWithRefreshToken();
 
     String getAccessToken() {return accessToken;}
+    uint64_t getTokenLifetime() {return tokenLifetime;}
 };
 
 

@@ -13,7 +13,7 @@
 #define LED 2
 
 bool isConnected = false;
-uint64_t lastUpdate = 0;
+uint64_t lastUpdate = 0, lastToken = 0;
 constexpr uint64_t updateTime = 5 * 60 * 1000; // 5 min 
 
 WiFiUDP ntpUDP;
@@ -34,9 +34,6 @@ void update()
     time_t systemTime = timeClient.getEpochTime();
     setTime(systemTime);
     Serial.println(DATETIME_STR(now(), true, false));
-
-    // Authenticate
-    oauth.init();
 
     // Get events
     calendar.fetchEvents();
@@ -77,6 +74,7 @@ void loop()
 	{
 		digitalWrite(LED, HIGH);
 		isConnected = true;
+        oauth.init();
         update();
 	}
 	
@@ -86,6 +84,13 @@ void loop()
 		delay(500);
 		isConnected = false;
 	}
+    
+    // Authenticate
+    if(isConnected && lastToken + oauth.getTokenLifetime() * 1000 < millis())
+    {
+        oauth.init();
+        lastToken = millis();
+    }
 
     // Perform update
     if(isConnected && lastUpdate + updateTime < millis())

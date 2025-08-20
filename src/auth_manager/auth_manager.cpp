@@ -28,7 +28,13 @@ AuthManager::~AuthManager()
 
 void AuthManager::init()
 {
-    readRefreshToken();
+    // Read refresh token from EEPROM if necessary
+    if(refreshToken.isEmpty())
+    {
+        readRefreshToken();
+    }
+
+    // Authenticate with refresh token
     if (!refreshToken.isEmpty()) {
         Serial.println("Refresh token: " + refreshToken);
         if (authWithRefreshToken()) {

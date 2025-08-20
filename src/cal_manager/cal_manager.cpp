@@ -55,6 +55,9 @@ void CalManager::fetchEvents()
 
     deserializeJson(response, response_string);
 
+    // Clear event data
+    events = {};
+
     // Check for keys and save events info
     for(int i = 0; i < response["items"].size(); i++)
     {
