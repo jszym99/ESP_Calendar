@@ -29,6 +29,7 @@ void CalManager::fetchEvents()
     String accessToken = tokenFunction(); // TODO: fallback on empty string
     
     const String calendarId = "primary";
+    const String fields = "fields=items(summary,start,end)";
 
     // Convert current unix time to ISO 8601
     time_t currentTime = now();
@@ -41,9 +42,9 @@ void CalManager::fetchEvents()
     // Construct URL
     const String URL = "https://www.googleapis.com/calendar/v3/calendars/" +
         calendarId + "/events?maxResults=" + String(eventCount) +
-        "&orderBy=startTime&singleEvents=true&timeMin=" + formattedTime;
+        "&orderBy=startTime&singleEvents=true&timeMin=" + formattedTime +
+        "&" + fields;
 
-        http.begin("https://www.googleapis.com/calendar/v3/calendars/primary/events?maxResults=5&orderBy=startTime&singleEvents=true&timeMin=" + formattedTime);
 	http.begin(URL);
     http.addHeader("Authorization",  "Bearer " + accessToken);
 
