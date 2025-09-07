@@ -29,7 +29,7 @@ void CalManager::fetchEvents()
     String accessToken = tokenFunction(); // TODO: fallback on empty string
     
     const String calendarId = "primary";
-    const String fields = "fields=items(summary,start,end)";
+    const String fields = "fields=items(id,summary,start,end)";
 
     // Convert current unix time to ISO 8601
     time_t currentTime = now();
@@ -63,8 +63,17 @@ void CalManager::fetchEvents()
     for(int i = 0; i < response["items"].size(); i++)
     {
         tmp = {};
+        if(response["items"][i]["id"].is<String>())
+        {
+            tmp.eventId = response["items"][i]["id"].as<String>();
+        }
+
         if(response["items"][i]["summary"].is<String>())
+        {
             tmp.summary = response["items"][i]["summary"].as<String>();
+        }
+
+        // Save event start date (and time)
         if(response["items"][i]["start"]["date"].is<String>())
         {
             tmp.startDate = datetimeToSeconds(response["items"][i]["start"]["date"].as<String>());
@@ -75,6 +84,8 @@ void CalManager::fetchEvents()
             tmp.startDate = datetimeToSeconds(response["items"][i]["start"]["dateTime"].as<String>());
             tmp.isAllDay = false;
         }
+
+        // Save event end date (and time)
         if(response["items"][i]["end"]["date"].is<String>())
         {
             tmp.endDate = datetimeToSeconds(response["items"][i]["end"]["date"].as<String>());

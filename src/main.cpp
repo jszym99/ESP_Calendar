@@ -14,7 +14,7 @@
 
 bool isConnected = false;
 uint64_t lastUpdate = 0, lastToken = 0;
-constexpr uint64_t updateTime = 5 * 60 * 1000; // 5 min 
+constexpr uint64_t updateTime = 5 * 1000; // 5 sec
 
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP);
@@ -25,6 +25,8 @@ DisplayManager display;
 
 void update()
 {
+    static std::vector<eventData> previousEvents = {};
+    static std::vector<eventData> events = {};
     // Fetch time from NTP
     while(!timeClient.update()) {
         timeClient.forceUpdate();
@@ -37,8 +39,13 @@ void update()
 
     // Get events
     calendar.fetchEvents();
-    std::vector<eventData> events = calendar.getEvents();
-    display.displayEvents(events);
+    events = calendar.getEvents();
+    
+    if(previousEvents != events)
+    {
+        display.displayEvents(events);
+        previousEvents = events;
+    }
 }
 
 void setup()

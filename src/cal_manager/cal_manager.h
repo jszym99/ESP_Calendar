@@ -9,11 +9,20 @@ constexpr uint8_t eventCount = 5;
 
 struct eventData
 {
+    String eventId;
     String summary;
     time_t startDate;
     time_t endDate;
     bool isAllDay;
 
+    // Overload == operator
+    bool operator==(const eventData& other) const {
+        return eventId == other.eventId &&
+               summary == other.summary &&
+               startDate == other.startDate &&
+               endDate == other.endDate &&
+               isAllDay == other.isAllDay;
+    }
 };
 
 class CalManager
