@@ -14,6 +14,9 @@ DisplayManager::DisplayManager(/* args */)
     tft.init(); 
     tft.fillScreen(backgroundColor);
 
+    pinMode(TFT_BL, OUTPUT);
+    analogWrite(TFT_BL, (UINT8_MAX - brightness));
+
     // Init text render
     if (render.loadFont(binaryttf, sizeof(binaryttf))) {
         Serial.println("Render initialize error");
@@ -120,7 +123,7 @@ uint8_t DisplayManager::drawItem(uint8_t startLine, String summary, String heade
     }
 
     // Draw frame
-    tft.drawSmoothRoundRect(xMargin, yOffset + (header.isEmpty() ? 0 :  0.75*smallFont), radius, radius+lineWidth-1, cellWidth, cellHeight, primaryColor, backgroundColor);
+    tft.drawSmoothRoundRect(xMargin, yOffset +  0.75*smallFont, radius, radius+lineWidth-1, cellWidth, cellHeight, primaryColor, backgroundColor);
 
     // Print header (event date)
     render.setFontColor(primaryColor, backgroundColor);
@@ -129,8 +132,8 @@ uint8_t DisplayManager::drawItem(uint8_t startLine, String summary, String heade
         render.setFontSize(smallFont);
         tft.fillRect(xTextMargin+smallFont-xMargin, yOffset+0.25*smallFont+1, render.getTextWidth(header.c_str()) + 2*xMargin, render.getTextHeight(header.c_str()), backgroundColor);
         render.drawString(header.c_str(), xTextMargin+smallFont, yOffset, primaryColor, backgroundColor);
-        yOffset += smallFont;
     }
+    yOffset += smallFont;
     
     // Print main text (summary)
     render.setFontSize(largeFont);
@@ -157,4 +160,10 @@ uint8_t DisplayManager::drawItem(uint8_t startLine, String summary, String heade
     // yOffset += 4;
 
     return yOffset;
+}
+
+void DisplayManager::setBrightness(uint8_t value)
+{
+    brightness = value;
+    analogWrite(TFT_BL, (UINT8_MAX - brightness));
 }

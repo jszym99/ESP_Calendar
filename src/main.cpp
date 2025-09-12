@@ -12,9 +12,7 @@
 #include "utils/utils.h"
 #define LED 2
 
-bool isConnected = false;
-uint64_t lastUpdate = 0, lastToken = 0;
-constexpr uint64_t updateTime = 5 * 1000; // 5 sec
+constexpr uint64_t updateTime = 60 * 1000; // 1 min
 
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP);
@@ -27,6 +25,7 @@ void update()
 {
     static std::vector<eventData> previousEvents = {};
     static std::vector<eventData> events = {};
+
     // Fetch time from NTP
     while(!timeClient.update()) {
         timeClient.forceUpdate();
@@ -41,6 +40,7 @@ void update()
     calendar.fetchEvents();
     events = calendar.getEvents();
     
+    // Update displayed events if any changed
     if(previousEvents != events)
     {
         display.displayEvents(events);
@@ -50,59 +50,71 @@ void update()
 
 void setup()
 {
-	pinMode(OUTPUT, LED);
+	// pinMode(LED, OUTPUT);
+    display.setBrightness(maxDisplayBrightness/2);
     
     // Start WiFi connection
 	WiFi.setHostname("ESP32");
 	WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 
 	Serial.begin(115200);
-
-    while (WiFi.status() != WL_CONNECTED)
-    {
-        delay(500);
-        Serial.println("Connecting to WiFi...");
-    }
-
-    // Print Network status
-    Serial.println("WiFi connected!");
-    Serial.print("ESP32 IP Address: ");
-    Serial.println(WiFi.localIP());
-
-    // Start NTP
-    timeClient.begin();
-    timeClient.setTimeOffset(7200);
 }
 
 void loop()
 {
+    static bool isConnected = false;
+    static uint64_t lastUpdate = 0;
+    static uint64_t lastToken = 0;
+
     // Connected to WiFi
 	if(WiFi.status() == WL_CONNECTED && isConnected == false)
 	{
-		digitalWrite(LED, HIGH);
+        // Print Network status
+        Serial.println("WiFi connected!");
+        Serial.print("ESP32 IP Address: ");
+        Serial.println(WiFi.localIP());
+
+        // Start NTP
+        timeClient.begin();
+        timeClient.setTimeOffset(7200);
+
+        oauth.init(); // Init oauth
+        update(); // Update display
+
+		// digitalWrite(LED, HIGH);
 		isConnected = true;
-        oauth.init();
-        update();
 	}
 	
 	if(WiFi.status() != WL_CONNECTED)
 	{
-		digitalWrite(LED, !digitalRead(LED));
+        Serial.print("Connecting to: ");
+        Serial.println(WIFI_SSID);
+
+		// digitalWrite(LED, !digitalRead(LED));
 		delay(500);
 		isConnected = false;
 	}
     
-    // Authenticate
-    if(isConnected && lastToken + oauth.getTokenLifetime() * 1000 < millis())
+    // WiFi connected - normal mode
+    if(isConnected)
     {
-        oauth.init();
-        lastToken = millis();
+        // Authenticate
+        if(lastToken + oauth.getTokenLifetime() * 1000 < millis())
+        {
+            oauth.init();
+            lastToken = millis();
+        }
+
+        // Perform update
+        if(lastUpdate + updateTime < millis())
+        {
+            update();
+            lastUpdate = millis();
+        }
+    }
+    else // WiFi not connected - AP mode
+    {
+        // TODO: AP mode
     }
 
-    // Perform update
-    if(isConnected && lastUpdate + updateTime < millis())
-    {
-        update();
-        lastUpdate = millis();
-    }
 }
