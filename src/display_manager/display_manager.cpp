@@ -165,5 +165,7 @@ uint8_t DisplayManager::drawItem(uint8_t startLine, String summary, String heade
 void DisplayManager::setBrightness(uint8_t value)
 {
     brightness = value;
-    analogWrite(TFT_BL, (UINT8_MAX - brightness));
+
+    float tmp = brightness/16;
+    analogWrite(TFT_BL, (UINT8_MAX - (tmp*tmp)));
 }

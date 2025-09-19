@@ -30,6 +30,7 @@ public:
     void displayEvents(std::vector<eventData> calEvents);
 
     void setBrightness(uint8_t value);
+    uint8_t getBrightness() {return brightness;}
 };
 
 

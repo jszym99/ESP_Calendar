@@ -9,8 +9,11 @@
 #include "auth_manager/auth_manager.h"
 #include "cal_manager/cal_manager.h"
 #include "display_manager/display_manager.h"
+#include "touch_button/touch_button.h"
 #include "utils/utils.h"
 #define LED 2
+
+#define TOUCH_PIN T9
 
 constexpr uint64_t updateTime = 60 * 1000; // 1 min
 
@@ -20,6 +23,7 @@ NTPClient timeClient(ntpUDP);
 AuthManager oauth = AuthManager(CLIENT_ID, CLIENT_SECRET);
 CalManager calendar = CalManager([](){ return oauth.getAccessToken();});
 DisplayManager display;
+TouchButton touchBtn = TouchButton(TOUCH_PIN);
 
 void update()
 {
@@ -52,6 +56,7 @@ void setup()
 {
 	// pinMode(LED, OUTPUT);
     display.setBrightness(maxDisplayBrightness/2);
+    touchBtn.init();
     
     // Start WiFi connection
 	WiFi.setHostname("ESP32");
@@ -65,6 +70,32 @@ void loop()
     static bool isConnected = false;
     static uint64_t lastUpdate = 0;
     static uint64_t lastToken = 0;
+
+    if(touchBtn.isClick())
+    {
+        uint8_t displayBrightness = display.getBrightness();
+        if(displayBrightness == maxDisplayBrightness)
+        {
+            display.setBrightness(0);
+        }
+        else
+        {
+            uint8_t newBrightness = displayBrightness + (maxDisplayBrightness+1)/4;
+            if(newBrightness > displayBrightness)
+            {
+                display.setBrightness(newBrightness);
+            }
+            else
+            {
+                display.setBrightness(maxDisplayBrightness);
+            }
+        }
+        Serial.println("Touch button clicked.");
+        Serial.print("Display brightness:");
+        Serial.print(((display.getBrightness()*100)/maxDisplayBrightness));
+        Serial.println("%");
+
+    }
 
     // Connected to WiFi
 	if(WiFi.status() == WL_CONNECTED && isConnected == false)
