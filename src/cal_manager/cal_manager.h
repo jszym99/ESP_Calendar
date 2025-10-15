@@ -4,13 +4,14 @@
 #include <TimeLib.h>
 #include <vector>
 #include "auth_manager/auth_manager.h"
+#include "display_manager/display_manager.h"
 
 constexpr uint8_t eventCount = 5;
 
 struct eventData
 {
-    String eventId;
-    String summary;
+    std::string eventId;
+    std::string summary;
     time_t startDate;
     time_t endDate;
     bool isAllDay;
@@ -28,15 +29,16 @@ struct eventData
 class CalManager
 {
 private:
-    std::vector<eventData> events;
-    String (*tokenFunction)();
+    std::vector<eventData> events = {};
+    bool pendingUpdate = false;
+    DisplayManager *display;
 public:
     /**
      * @brief Construct a new Cal Manager object.
      * 
      * @param func Access token getter function.
      */
-    CalManager(String (*func)());
+    CalManager(DisplayManager *displayManager);
 
     /**
      * @brief Destroy the Cal Manager object.
@@ -49,15 +51,9 @@ public:
      * 
      * @note Hard coded primary calendar for now.
      */
-    void fetchEvents();
+    void fetchEvents(String accessToken);
 
-    /**
-     * @brief Get the Events object.
-     * @note Events are sorted chronologically from current system time.
-     * 
-     * @return std::vector<eventData> 
-     */
-    std::vector<eventData> getEvents() {return events;} 
+    void showEvents();
 };
 
 #endif /* CAL_MANAGER_H */

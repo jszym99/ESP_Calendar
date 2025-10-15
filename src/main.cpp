@@ -11,7 +11,6 @@
 #include "display_manager/display_manager.h"
 #include "touch_button/touch_button.h"
 #include "utils/utils.h"
-#define LED 2
 
 #define TOUCH_PIN T9
 
@@ -20,42 +19,32 @@ constexpr uint64_t updateTime = 60 * 1000; // 1 min
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP);
 
-AuthManager oauth = AuthManager(CLIENT_ID, CLIENT_SECRET);
-CalManager calendar = CalManager([](){ return oauth.getAccessToken();});
-DisplayManager display;
+AuthManager oauth = AuthManager(CLIENT_ID, CLIENT_SECRET); // TODO: Read cliend ID and Secret from EEPROM
+DisplayManager display = DisplayManager();
+CalManager calendar = CalManager(&display);
 TouchButton touchBtn = TouchButton(TOUCH_PIN);
 
 void update()
 {
-    static std::vector<eventData> previousEvents = {};
-    static std::vector<eventData> events = {};
-
     // Fetch time from NTP
     while(!timeClient.update()) {
         timeClient.forceUpdate();
     }
 
     // Update system time
-    time_t systemTime = timeClient.getEpochTime();
-    setTime(systemTime);
-    Serial.println(DATETIME_STR(now(), true, false));
+    setTime(timeClient.getEpochTime());
+    Serial.println(datetimeToString(now(), true, false).c_str());
 
     // Get events
-    calendar.fetchEvents();
-    events = calendar.getEvents();
-    
-    // Update displayed events if any changed
-    if(previousEvents != events)
-    {
-        display.displayEvents(events);
-        previousEvents = events;
-    }
+    calendar.fetchEvents(oauth.getAccessToken());
+    calendar.showEvents();
+    display.displayHeader();
 }
 
 void setup()
 {
-	// pinMode(LED, OUTPUT);
-    display.setBrightness(maxDisplayBrightness/2);
+    // Initialize hardware
+    display.init();
     touchBtn.init();
     
     // Start WiFi connection
@@ -71,6 +60,7 @@ void loop()
     static uint64_t lastUpdate = 0;
     static uint64_t lastToken = 0;
 
+    // Cycle brightness on touch
     if(touchBtn.isClick())
     {
         uint8_t displayBrightness = display.getBrightness();
@@ -112,7 +102,6 @@ void loop()
         oauth.init(); // Init oauth
         update(); // Update display
 
-		// digitalWrite(LED, HIGH);
 		isConnected = true;
 	}
 	
@@ -121,7 +110,6 @@ void loop()
         Serial.print("Connecting to: ");
         Serial.println(WIFI_SSID);
 
-		// digitalWrite(LED, !digitalRead(LED));
 		delay(500);
 		isConnected = false;
 	}

@@ -2,6 +2,7 @@
 #define UTILS_H
 
 #include <Arduino.h>
+#include <TimeLib.h>
 
 /**
  * @brief Make human readable date and time from unix time
@@ -9,12 +10,12 @@
  * @param b true if exclude time from date
  * 
  */
-#define DATETIME_STR(t, y, b) String(dayShortStr(weekday(t))) + ", " + \
-                       (day(t) < 10 ? "0" : "") + String(day(t)) + " " + \
-                       String(monthShortStr(month(t))) + " " + \
-                       (y ? (String(year(t)) + " ") : "") + \
-                       (!b ? (hour(t) < 10 ? "0" : "") + String(hour(t)) + ":" + \
-                       (minute(t) < 10 ? "0" : "") + String(minute(t)) : "")
+// #define DATETIME_STR(t, y, b) String(dayShortStr(weekday(t))) + ", " + \
+//                        (day(t) < 10 ? "0" : "") + String(day(t)) + " " + \
+//                        String(monthShortStr(month(t))) + " " + \
+//                        (y ? (String(year(t)) + " ") : "") + \
+//                        (!b ? (hour(t) < 10 ? "0" : "") + String(hour(t)) + ":" + \
+//                        (minute(t) < 10 ? "0" : "") + String(minute(t)) : "")
 
 /**
  * @brief Parses ISO 8601 to Unix time
@@ -23,5 +24,25 @@
  * @return time_t Time in Unix format (seconds since 1970).
  */
 time_t datetimeToSeconds(const String& datetime);
+
+inline std::string datetimeToString(time_t time, bool showYear = false, bool allDay = false)
+{
+    return (std::string(dayShortStr(weekday(time))) + ", " +
+            (day(time) < 10 ? "0" : "") + std::to_string(day(time)) + " " + 
+            std::string(monthShortStr(month(time))) + " " + 
+            (showYear ? (std::to_string(year(time)) + " ") : "") + 
+            (!allDay ? (hour(time) < 10 ? "0" : "") + std::to_string(hour(time)) + ":" + 
+            (minute(time) < 10 ? "0" : "") + std::to_string(minute(time)) : ""));
+    }
+
+inline std::string timeToString(time_t time)
+{
+    return (hour(time) < 10 ? "0" : "") + std::to_string(hour(time)) + ":" + (minute(time) < 10 ? "0" : "") + std::to_string(minute(time));
+}
+
+inline std::string dateToString(time_t date)
+{
+    return (day(date) < 10 ? "0" : "") + std::to_string(day(date)) + " " +  std::string(monthShortStr(month(date))) + " " +  timeToString(date);
+}
 
 #endif /* UTILS_H */

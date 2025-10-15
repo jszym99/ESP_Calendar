@@ -7,9 +7,9 @@
 
 static HTTPClient http;
 
-CalManager::CalManager(String (*func)())
+CalManager::CalManager(DisplayManager *displayManager)
 {
-    tokenFunction = func;
+    display = displayManager;
 }
 
 CalManager::~CalManager()
@@ -21,18 +21,18 @@ CalManager::~CalManager()
  * 
  * Note: hard coded primary calendar for now
  */
-void CalManager::fetchEvents()
+void CalManager::fetchEvents(String accessToken)
 {
     JsonDocument response;
     String response_string;
-    eventData tmp;
-    String accessToken = tokenFunction(); // TODO: fallback on empty string
+    eventData newEvent;
+    std::vector<eventData> newEvents = {};
     
     const String calendarId = "primary";
     const String fields = "fields=items(id,summary,start,end)";
 
     // Convert current unix time to ISO 8601
-    time_t currentTime = now();
+    time_t currentTime = now() - 7200; // Compensate time zone
     tm *tm = gmtime(&currentTime);
     char buf[25];
     strftime(buf, sizeof(buf), "%Y-%m-%dT%H:%M:%SZ", tm);
@@ -56,47 +56,91 @@ void CalManager::fetchEvents()
 
     deserializeJson(response, response_string);
 
-    // Clear event data
-    events = {};
-
     // Check for keys and save events info
     for(int i = 0; i < response["items"].size(); i++)
     {
-        tmp = {};
-        if(response["items"][i]["id"].is<String>())
+        newEvent = {};
+        if(response["items"][i]["id"].is<std::string>())
         {
-            tmp.eventId = response["items"][i]["id"].as<String>();
+            newEvent.eventId = response["items"][i]["id"].as<std::string>();
         }
 
-        if(response["items"][i]["summary"].is<String>())
+        if(response["items"][i]["summary"].is<std::string>())
         {
-            tmp.summary = response["items"][i]["summary"].as<String>();
+            newEvent.summary = response["items"][i]["summary"].as<std::string>();
         }
 
         // Save event start date (and time)
         if(response["items"][i]["start"]["date"].is<String>())
         {
-            tmp.startDate = datetimeToSeconds(response["items"][i]["start"]["date"].as<String>());
-            tmp.isAllDay = true;
+            newEvent.startDate = datetimeToSeconds(response["items"][i]["start"]["date"].as<String>());
+            newEvent.isAllDay = true;
         }
         else if (response["items"][i]["start"]["dateTime"].is<String>())
         {
-            tmp.startDate = datetimeToSeconds(response["items"][i]["start"]["dateTime"].as<String>());
-            tmp.isAllDay = false;
+            newEvent.startDate = datetimeToSeconds(response["items"][i]["start"]["dateTime"].as<String>());
+            newEvent.isAllDay = false;
         }
 
         // Save event end date (and time)
         if(response["items"][i]["end"]["date"].is<String>())
         {
-            tmp.endDate = datetimeToSeconds(response["items"][i]["end"]["date"].as<String>());
-            tmp.isAllDay = true;
+            newEvent.endDate = datetimeToSeconds(response["items"][i]["end"]["date"].as<String>());
+            newEvent.isAllDay = true;
         }
         else if (response["items"][i]["end"]["dateTime"].is<String>())
         {
-            tmp.endDate = datetimeToSeconds(response["items"][i]["end"]["dateTime"].as<String>());
-            tmp.isAllDay = false;
+            newEvent.endDate = datetimeToSeconds(response["items"][i]["end"]["dateTime"].as<String>());
+            newEvent.isAllDay = false;
         }
 
-        events.push_back(tmp);
+        newEvents.push_back(newEvent);
+    }
+
+    if(newEvents != events & !newEvents.empty())
+    {
+        pendingUpdate = true;
+        events = newEvents;
+    }
+}
+
+void CalManager::showEvents()
+{
+    if(pendingUpdate)
+    {
+        std::string startTime;
+        std::string endTime;
+        std::string time;
+        std::string date;
+
+        display->clearItems();
+
+        for(const auto &ev : events)
+        {
+            // Create date and time strings
+            if(ev.startDate/SECS_PER_DAY == ev.endDate/SECS_PER_DAY)
+            {
+                startTime = timeToString(ev.startDate);
+                endTime = timeToString(ev.endDate);
+            }
+            else
+            {
+                startTime = dateToString(ev.startDate);
+                endTime = dateToString(ev.endDate);
+            }
+
+            time = (ev.isAllDay ? "All day" : startTime + " - " + endTime);
+
+            // Create date sring and append "today" if needed
+            date = (date != datetimeToString(ev.startDate, false, true) ? datetimeToString(ev.startDate, false, true) : "");
+            if(now()/SECS_PER_DAY == ev.startDate/SECS_PER_DAY)
+            {
+                date += ", Today";
+            }
+
+            display->addItem(ev.summary, date, time);
+        }
+        display->dsiplay();
+        pendingUpdate = false;
     }
 }

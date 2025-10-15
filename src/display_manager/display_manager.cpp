@@ -8,14 +8,22 @@ constexpr uint8_t xTextMargin = xMargin + 8;
 constexpr uint8_t cellWidth = TFT_WIDTH-2*xMargin-1;
 constexpr uint8_t tftHeight = 230; //TFT_HEIGHT;
 
-DisplayManager::DisplayManager(/* args */)
+DisplayManager::DisplayManager()
+{
+}
+
+DisplayManager::~DisplayManager()
+{
+}
+
+void DisplayManager::init()
 {
     // Init tft and clear display
     tft.init(); 
     tft.fillScreen(backgroundColor);
 
-    pinMode(TFT_BL, OUTPUT);
-    analogWrite(TFT_BL, (UINT8_MAX - brightness));
+    pinMode(TFT_BL, OUTPUT); // Set backlight control pin
+    setBrightness(brightness); // Set backlight brightness
 
     // Init text render
     if (render.loadFont(binaryttf, sizeof(binaryttf))) {
@@ -25,17 +33,16 @@ DisplayManager::DisplayManager(/* args */)
     render.setDrawer(tft); // Set drawer object
 }
 
-DisplayManager::~DisplayManager()
-{
-}
-
 void DisplayManager::displayHeader()
 {
+    // Clear header space
+    tft.fillRect(0, 0, TFT_WIDTH, 24, backgroundColor);
+
     // Print last update date and time
     render.setFontSize(smallFont);
     render.setCursor(0,0);
     render.setFontColor(primaryColor, backgroundColor);
-    render.drawString((DATETIME_STR(now(), true, false)).c_str(), render.getCursorX(), render.getCursorY(), render.getFontColor(), render.getBackgroundColor());
+    render.drawString((datetimeToString(now(), true, false)).c_str(), render.getCursorX(), render.getCursorY(), render.getFontColor(), render.getBackgroundColor());
 
     // Draw WiFi symbol
     tft.drawSmoothArc(240-16, 12, 10, 9, 135, 225, TFT_BLUE, backgroundColor);
@@ -44,68 +51,31 @@ void DisplayManager::displayHeader()
     tft.drawLine(0, 20, TFT_WIDTH, 20, primaryColor);
 }
 
-void DisplayManager::displayEvents(std::vector<eventData> calEvents)
+void DisplayManager::addItem(std::string summary, std::string header, std::string footer)
 {
-    tft.fillScreen(backgroundColor);
+    items.push_back(displayItem{summary, header, footer});
+}
+
+void DisplayManager::dsiplay()
+{
+    uint8_t startY = 24;
 
     displayHeader();
 
-    render.setCursor(8,24);
-    render.setFontColor(primaryColor, backgroundColor);
-    render.setFontSize(largeFont);
-
-    // Display event error
-    if(calEvents.empty())
+    for(auto it : items)
     {
-        render.setFontColor(TFT_RED, backgroundColor);
-        render.printf("No events found!\n");
-        render.seekCursor(0, render.getFontSize());
-
-        return;
+        startY = drawItem(startY, it.body, it.header, it.footer);
     }
-
-    uint8_t startY = 24;
-    String startTime;
-    String endTime;
-    String time;
-    String date;
-    for(const auto &ev : calEvents)
-    {
-        // Create date and time strings
-        if(ev.startDate/SECS_PER_DAY == ev.endDate/SECS_PER_DAY)
-        {
-            startTime = (hour(ev.startDate) < 10 ? "0" : "") + String(hour(ev.startDate))
-                + ":" + (minute(ev.startDate) < 10 ? "0" : "") + String(minute(ev.startDate));
-            endTime = (hour(ev.endDate) < 10 ? "0" : "") + String(hour(ev.endDate))
-                + ":" + (minute(ev.endDate) < 10 ? "0" : "") + String(minute(ev.endDate));
-        }
-        else
-        {
-            startTime = (day(ev.startDate) < 10 ? "0" : "") + String(day(ev.startDate)) + " " + 
-                String(monthShortStr(month(ev.startDate))) + " " + 
-                (hour(ev.startDate) < 10 ? "0" : "") + String(hour(ev.startDate)) + ":" + 
-                (minute(ev.startDate) < 10 ? "0" : "") + String(minute(ev.startDate));
-            endTime = (day(ev.endDate) < 10 ? "0" : "") + String(day(ev.endDate)) + " " + \
-                String(monthShortStr(month(ev.endDate))) + " " +
-                (hour(ev.endDate) < 10 ? "0" : "") + String(hour(ev.endDate)) + ":" + 
-                (minute(ev.endDate) < 10 ? "0" : "") + String(minute(ev.endDate));
-        }
-        time = (ev.isAllDay ? "All day" : startTime + " - " + endTime);
-
-        // Create date sring and append "today" if needed
-        date = (date != DATETIME_STR(ev.startDate, false, true) ? DATETIME_STR(ev.startDate, false, true) : "");
-        if(now()/SECS_PER_DAY == ev.startDate/SECS_PER_DAY)
-        {
-            date += ", Today";
-        }
-
-        // Draw the event item
-        startY = drawItem(startY, ev.summary, date, time);
-    }
-    // tft.drawLine(0, 230, TFT_WIDTH, 230, primaryColor);
+    // TODO: length limit
 }
 
-uint8_t DisplayManager::drawItem(uint8_t startLine, String summary, String header, String footer)
+void DisplayManager::clearItems()
+{
+    items = {};
+    tft.fillRect(0, 24, TFT_WIDTH, TFT_HEIGHT-24, backgroundColor);
+}
+
+uint8_t DisplayManager::drawItem(uint8_t startLine, std::string summary, std::string header, std::string footer)
 {
     // Constants
     const uint8_t radius = 12;
@@ -117,7 +87,7 @@ uint8_t DisplayManager::drawItem(uint8_t startLine, String summary, String heade
     uint8_t cellHeight = TFT_HEIGHT+radius - (yOffset + 0.75*smallFont);
 
     //Check if item will fit
-    if(yOffset + smallFont + 1.5*largeFont + (footer.isEmpty() ? 0 :  0.75*smallFont) >= tftHeight)
+    if(yOffset + smallFont + 1.5*largeFont + (footer.empty() ? 0 :  0.75*smallFont) >= tftHeight)
     {
         return yOffset;
     }
@@ -127,7 +97,7 @@ uint8_t DisplayManager::drawItem(uint8_t startLine, String summary, String heade
 
     // Print header (event date)
     render.setFontColor(primaryColor, backgroundColor);
-    if(!header.isEmpty())
+    if(!header.empty())
     {
         render.setFontSize(smallFont);
         tft.fillRect(xTextMargin+smallFont-xMargin, yOffset+0.25*smallFont+1, render.getTextWidth(header.c_str()) + 2*xMargin, render.getTextHeight(header.c_str()), backgroundColor);
@@ -140,17 +110,17 @@ uint8_t DisplayManager::drawItem(uint8_t startLine, String summary, String heade
     // Shorten string if doesn't fit
     if(render.getTextWidth(summary.c_str())+2*xTextMargin >= TFT_WIDTH)
     {
-        summary.concat("...");
+        summary += "...";
     }
     while(render.getTextWidth(summary.c_str())+2*xTextMargin >= TFT_WIDTH)
     {
-        summary.remove(summary.length()-4, 1);
+        summary.erase(summary.length()-4, 1);
     }
     render.drawString(summary.c_str(), xTextMargin, yOffset, primaryColor, backgroundColor);
     yOffset += 1.5*largeFont;
 
     // Print footer (event duration)
-    if(!footer.isEmpty())
+    if(!footer.empty())
     {
         render.setFontSize(smallFont);
         render.rdrawString(footer.c_str(), TFT_WIDTH - (xTextMargin+smallFont), yOffset-smallFont/4, primaryColor, backgroundColor);
@@ -164,8 +134,10 @@ uint8_t DisplayManager::drawItem(uint8_t startLine, String summary, String heade
 
 void DisplayManager::setBrightness(uint8_t value)
 {
+    // Change brightness value
     brightness = value;
 
+    // Update backlight PWM
     float tmp = brightness/16;
     analogWrite(TFT_BL, (UINT8_MAX - (tmp*tmp)));
 }
