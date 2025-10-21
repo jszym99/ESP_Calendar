@@ -16,20 +16,50 @@ CalManager::~CalManager()
 {
 }
 
-/**
- * @brief Fetch events from google calendar.
- * 
- * Note: hard coded primary calendar for now
- */
-void CalManager::fetchEvents(String accessToken)
+void CalManager::fetchCalendarList(const String accessToken)
 {
     JsonDocument response;
     String response_string;
-    eventData newEvent;
-    std::vector<eventData> newEvents = {};
+
+    // Construct URL
+    const char URL[] = "https://www.googleapis.com/calendar/v3/users/me/calendarList";
+ 
+    http.begin(URL);
+    http.addHeader("Authorization",  "Bearer " + accessToken);
+
+    Serial.println("HTTP Response Code: " + String(http.GET()));
+    response_string = http.getString();
+    Serial.println("Response: " + response_string);
+
+    deserializeJson(response, response_string);
+
+    Calendar calendar = {};
+    std::vector<Calendar> newCalendarList = {};
     
-    const String calendarId = "primary";
-    const String fields = "fields=items(id,summary,start,end)";
+    for(int i = 0; i < response["items"].size(); i++)
+    {
+        calendar.calendarId = response["items"][i]["id"].as<String>();
+        calendar.summary = response["items"][i]["summary"].as<String>();
+        calendar.description = response["items"][i]["description"].as<String>();
+        if(response["items"][i]["primary"].is<bool>() & response["items"][i]["primary"].as<bool>() == true)
+        {
+            calendar.primary = true;
+        }
+        
+        newCalendarList.push_back(calendar);
+    }
+
+    calendarList = updateVector(calendarList, newCalendarList);
+}
+
+std::vector<EventData> CalManager::listCalendarEvents(const String accessToken, const String calendarId)
+{
+    JsonDocument response;
+    String response_string;
+    EventData newEvent;
+    std::vector<EventData> newEvents = {};
+    
+    const char fields[] = "fields=items(id,summary,start,end)";
 
     // Convert current unix time to ISO 8601
     time_t currentTime = now() - 7200; // Compensate time zone
@@ -96,6 +126,37 @@ void CalManager::fetchEvents(String accessToken)
 
         newEvents.push_back(newEvent);
     }
+
+    return newEvents;
+}
+
+/**
+ * @brief Fetch events from google calendar.
+ * 
+ * Note: hard coded primary calendar for now
+ */
+void CalManager::fetchEvents(const String accessToken)
+{
+    std::vector<EventData> newEvents = {};
+    
+    for(Calendar cal : calendarList)
+    {
+        if(cal.enabled)
+        {
+            std::vector<EventData> calendarEvents = listCalendarEvents(accessToken, cal.calendarId);
+
+            newEvents.insert(newEvents.end(), calendarEvents.begin(), calendarEvents.end());
+
+            std::sort(newEvents.begin(), newEvents.end());
+
+            // Remove unneeded events
+            if(newEvents.size() > eventCount)
+            {
+                newEvents.erase(newEvents.begin() + eventCount, newEvents.end());
+            }
+        }
+    }
+
 
     if(newEvents != events & !newEvents.empty())
     {

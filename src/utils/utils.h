@@ -3,6 +3,7 @@
 
 #include <Arduino.h>
 #include <TimeLib.h>
+#include <vector>
 
 /**
  * @brief Make human readable date and time from unix time
@@ -43,6 +44,34 @@ inline std::string timeToString(time_t time)
 inline std::string dateToString(time_t date)
 {
     return (day(date) < 10 ? "0" : "") + std::to_string(day(date)) + " " +  std::string(monthShortStr(month(date))) + " " +  timeToString(date);
+}
+
+template <typename T>
+inline std::vector<T> updateVector(std::vector<T> oldVector, std::vector<T> newVector)
+{
+    // Add new elements that are not in old vector
+    for(auto vec : newVector)
+    {
+        if(std::find(oldVector.begin(), oldVector.end(), vec) == oldVector.end())
+        {
+            oldVector.push_back(vec);
+        }
+    }
+
+    // Remove old elements that are not in new vector
+    for(auto it = oldVector.begin(); it != oldVector.end(); )
+    {
+        if(std::find(newVector.begin(), newVector.end(), *it) == newVector.end())
+        {
+            it = oldVector.erase(it);
+        }
+        else
+        {
+            ++it;
+        }
+    }
+
+    return oldVector;
 }
 
 #endif /* UTILS_H */

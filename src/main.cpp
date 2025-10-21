@@ -99,6 +99,13 @@ void loop()
         timeClient.begin();
         timeClient.setTimeOffset(7200);
 
+        if(oauth.authenticate())
+        {
+            lastToken = millis();
+        }
+        
+        calendar.fetchCalendarList(oauth.getAccessToken());
+
 		isConnected = true;
 	}
 	
@@ -116,14 +123,16 @@ void loop()
     if(isConnected)
     {
         // Authenticate
-        if(lastToken + oauth.getTokenLifetime() * 1000 < millis())
+        if(lastToken + oauth.getTokenLifetime() * 1000 < millis() || lastToken == 0)
         {
-            oauth.authenticate();
-            lastToken = millis();
+            if(oauth.authenticate())
+            {
+                lastToken = millis();
+            }
         }
 
         // Perform update
-        if(lastUpdate + updateTime < millis())
+        if(lastUpdate + updateTime < millis() || lastUpdate == 0)
         {
             update();
             lastUpdate = millis();
