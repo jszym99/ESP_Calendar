@@ -26,7 +26,13 @@ AuthManager::~AuthManager()
 {
 }
 
-void AuthManager::init()
+/**
+ * @brief Generate new auth token.
+ * 
+ * @return true Generated new token succesfuly.
+ * @return false Failed to generate new token.
+ */
+bool AuthManager::authenticate()
 {
     // Read refresh token from EEPROM if necessary
     if(refreshToken.isEmpty())
@@ -38,14 +44,20 @@ void AuthManager::init()
     if (!refreshToken.isEmpty()) {
         Serial.println("Refresh token: " + refreshToken);
         if (authWithRefreshToken()) {
-            return;
+            return true;
         }
     }
 
-    authWithAccessToken();
+    return authWithDeviceCode();
 }
 
-bool AuthManager::authWithAccessToken()
+/**
+ * @brief Generate new auth token using device code.
+ * 
+ * @return true Generated new token succesfuly.
+ * @return false Failed to generate new token.
+ */
+bool AuthManager::authWithDeviceCode()
 {
     HTTPClient http;
     JsonDocument response;
@@ -122,6 +134,12 @@ bool AuthManager::authWithAccessToken()
     
 }
 
+/**
+ * @brief Generate new auth token using refresh token.
+ * 
+ * @return true Generated new token succesfuly.
+ * @return false Failed to generate new token.
+ */
 bool AuthManager::authWithRefreshToken()
 {
      HTTPClient http;
@@ -159,8 +177,10 @@ bool AuthManager::authWithRefreshToken()
     }
 }
 
-
-/* TODO - better memory management */
+/**
+ * @brief Save refresh token to persistant memory.
+ * @todo - better memory management
+ */
 void AuthManager::saveRefreshToken()
 {
     EEPROM.begin(EEPROM_SIZE);
@@ -171,6 +191,10 @@ void AuthManager::saveRefreshToken()
     EEPROM.commit();
 }
 
+/**
+ * @brief Read refresh token from persistant memory.
+ * 
+ */
 void AuthManager::readRefreshToken()
 {
     EEPROM.begin(EEPROM_SIZE);

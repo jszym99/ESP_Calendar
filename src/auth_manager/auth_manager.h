@@ -12,20 +12,19 @@ private:
     String clientSecret;
     uint16_t tokenLifetime;
 
-
     void saveRefreshToken();
     void readRefreshToken();
-    bool checkResponse(JsonDocument response);
+    bool authWithDeviceCode();
+    bool authWithRefreshToken();
+
 public:
     AuthManager(String _clientId, String _clientSecret);
     ~AuthManager();
 
-    void init();
-    bool authWithAccessToken();
-    bool authWithRefreshToken();
+    bool authenticate();
 
     String getAccessToken() {return accessToken;}
-    uint64_t getTokenLifetime() {return tokenLifetime;}
+    uint16_t getTokenLifetime() {return tokenLifetime;}
 };
 
 

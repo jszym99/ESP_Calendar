@@ -99,12 +99,10 @@ void loop()
         timeClient.begin();
         timeClient.setTimeOffset(7200);
 
-        oauth.init(); // Init oauth
-        update(); // Update display
-
 		isConnected = true;
 	}
 	
+    // Try to connect repeatedly
 	if(WiFi.status() != WL_CONNECTED)
 	{
         Serial.print("Connecting to: ");
@@ -120,7 +118,7 @@ void loop()
         // Authenticate
         if(lastToken + oauth.getTokenLifetime() * 1000 < millis())
         {
-            oauth.init();
+            oauth.authenticate();
             lastToken = millis();
         }
 
