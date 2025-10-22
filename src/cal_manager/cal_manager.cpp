@@ -21,15 +21,27 @@ void CalManager::fetchCalendarList(const String accessToken)
     JsonDocument response;
     String response_string;
 
+    const char fields[] = "fields=items(id,summary,description,primary)";
+
     // Construct URL
-    const char URL[] = "https://www.googleapis.com/calendar/v3/users/me/calendarList";
+    const char URL[] = "https://www.googleapis.com/calendar/v3/users/me/calendarList?fields=items(id,summary,description,primary)";
  
     http.begin(URL);
     http.addHeader("Authorization",  "Bearer " + accessToken);
 
-    Serial.println("HTTP Response Code: " + String(http.GET()));
+    int httpResponseCode = http.GET();
+    Serial.println("HTTP Response Code: " + String(httpResponseCode));
+
+    if(httpResponseCode != HTTP_CODE_OK)
+    {
+        http.end();
+        return;
+    }
+
     response_string = http.getString();
     Serial.println("Response: " + response_string);
+
+    http.end();
 
     deserializeJson(response, response_string);
 
@@ -38,9 +50,10 @@ void CalManager::fetchCalendarList(const String accessToken)
     
     for(int i = 0; i < response["items"].size(); i++)
     {
-        calendar.calendarId = response["items"][i]["id"].as<String>();
-        calendar.summary = response["items"][i]["summary"].as<String>();
-        calendar.description = response["items"][i]["description"].as<String>();
+        calendar.calendarId = response["items"][i]["id"].as<std::string>();
+
+        calendar.summary = response["items"][i]["summary"].as<std::string>();
+        calendar.description = response["items"][i]["description"].as<std::string>();
         if(response["items"][i]["primary"].is<bool>() & response["items"][i]["primary"].as<bool>() == true)
         {
             calendar.primary = true;
@@ -52,37 +65,55 @@ void CalManager::fetchCalendarList(const String accessToken)
     calendarList = updateVector(calendarList, newCalendarList);
 }
 
-std::vector<EventData> CalManager::listCalendarEvents(const String accessToken, const String calendarId)
+std::vector<EventData> CalManager::listCalendarEvents(const String accessToken, std::string calendarId)
 {
     JsonDocument response;
     String response_string;
     EventData newEvent;
     std::vector<EventData> newEvents = {};
     
-    const char fields[] = "fields=items(id,summary,start,end)";
+    const std::string fields = "fields=items(id,summary,start,end)";
 
     // Convert current unix time to ISO 8601
     time_t currentTime = now() - 7200; // Compensate time zone
     tm *tm = gmtime(&currentTime);
     char buf[25];
     strftime(buf, sizeof(buf), "%Y-%m-%dT%H:%M:%SZ", tm);
-    String formattedTime = String(buf);
+    // String formattedTime = String(buf);
 
+    // Replace # with character code (#23)
+    while(calendarId.find("#") != std::string::npos)
+    {
+        calendarId.replace(calendarId.find("#"), 1, "%23");
+    }
 
     // Construct URL
-    const String URL = "https://www.googleapis.com/calendar/v3/calendars/" +
-        calendarId + "/events?maxResults=" + String(eventCount) +
-        "&orderBy=startTime&singleEvents=true&timeMin=" + formattedTime +
+    const std::string URL = "https://www.googleapis.com/calendar/v3/calendars/" +
+        calendarId + "/events?maxResults=" + std::to_string(eventCount) +
+        "&orderBy=startTime&singleEvents=true&timeMin=" + buf +
         "&" + fields;
 
-	http.begin(URL);
+    // const std::string params = "/events?maxResults=" + std::to_string(eventCount)+ ;
+
+	http.begin(URL.c_str());
     http.addHeader("Authorization",  "Bearer " + accessToken);
+
+    Serial.println("Request: " + String(URL.c_str()));
 
     // TODO: Fallback on request error
     int httpResponseCode = http.GET();
-    response_string = http.getString();
     Serial.println("HTTP Response Code: " + String(httpResponseCode));
+
+    if(httpResponseCode != HTTP_CODE_OK)
+    {
+        http.end();
+        return newEvents;
+    }
+
+    response_string = http.getString();
     Serial.println("Response: " + response_string);
+
+    http.end();
 
     deserializeJson(response, response_string);
 
@@ -145,15 +176,19 @@ void CalManager::fetchEvents(const String accessToken)
         {
             std::vector<EventData> calendarEvents = listCalendarEvents(accessToken, cal.calendarId);
 
-            newEvents.insert(newEvents.end(), calendarEvents.begin(), calendarEvents.end());
-
-            std::sort(newEvents.begin(), newEvents.end());
-
-            // Remove unneeded events
-            if(newEvents.size() > eventCount)
+            if(!calendarEvents.empty())
             {
-                newEvents.erase(newEvents.begin() + eventCount, newEvents.end());
+                newEvents.insert(newEvents.end(), calendarEvents.begin(), calendarEvents.end());
+    
+                std::sort(newEvents.begin(), newEvents.end());
+    
+                // Remove unneeded events
+                if(newEvents.size() > eventCount)
+                {
+                    newEvents.erase(newEvents.begin() + eventCount, newEvents.end());
+                }
             }
+
         }
     }
 

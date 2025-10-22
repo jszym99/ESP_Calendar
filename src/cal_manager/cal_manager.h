@@ -10,9 +10,9 @@ constexpr uint8_t eventCount = 3;
 
 struct Calendar
 {
-    String calendarId;
-    String summary;
-    String description;
+    std::string calendarId;
+    std::string summary;
+    std::string description;
     bool enabled = true;
     bool primary = false;
 
@@ -75,7 +75,7 @@ public:
      * @note Hard coded primary calendar for now.
      */
     void fetchEvents(const String accessToken);
-    std::vector<EventData> listCalendarEvents(const String accessToken, const String calendarId = "primary");
+    std::vector<EventData> listCalendarEvents(const String accessToken, std::string calendarId = "primary");
 
     void showEvents();
 };
