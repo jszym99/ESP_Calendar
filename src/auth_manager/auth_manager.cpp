@@ -1,6 +1,7 @@
 #include "auth_manager.h"
 #include <HTTPClient.h>
 #include <EEPROM.h>
+#include "utils/utils.h"
 
 #define EEPROM_SIZE 512
 #define REFRESH_TOKEN_ADDRESS 0
@@ -29,7 +30,7 @@ AuthManager::~AuthManager()
 /**
  * @brief Generate new auth token.
  * 
- * @return true Generated new token succesfuly.
+ * @return true Generated new token successfully.
  * @return false Failed to generate new token.
  */
 bool AuthManager::authenticate()
@@ -54,7 +55,7 @@ bool AuthManager::authenticate()
 /**
  * @brief Generate new auth token using device code.
  * 
- * @return true Generated new token succesfuly.
+ * @return true Generated new token successfully.
  * @return false Failed to generate new token.
  */
 bool AuthManager::authWithDeviceCode()
@@ -62,7 +63,7 @@ bool AuthManager::authWithDeviceCode()
     HTTPClient http;
     JsonDocument response;
     String postData = "client_id=" + clientId + "&scope=" + scope;
-    String response_string;
+    String responseString;
     String deviceCode;
     uint16_t interval = 5000;
 
@@ -70,14 +71,17 @@ bool AuthManager::authWithDeviceCode()
     http.begin(codeURL);
     http.addHeader("Content-Type", "application/x-www-form-urlencoded");
 
+    // Get response and code
     int httpResponseCode = http.POST(postData);
+    responseString = http.getString();
+    
+    printHttpResp(httpResponseCode, responseString);
 
-    if (httpResponseCode == 200)
+    if (httpResponseCode == HTTP_CODE_OK)
     {
-        response_string = http.getString();
-		deserializeJson(response, response_string);
-        Serial.println("HTTP Response Code: " + String(httpResponseCode));
-        Serial.println("Response: " + response_string);
+
+		deserializeJson(response, responseString);
+
         http.end();
 
         if(response["interval"].is<uint16_t>())
@@ -87,7 +91,7 @@ bool AuthManager::authWithDeviceCode()
     }
     else
     {
-        Serial.println("Error on sending POST: " + String(httpResponseCode));
+        Serial.println("\33[0;31mError on sending POST: " + String(httpResponseCode) + "\33[0m");
         http.end();
         return false;
     }
@@ -104,17 +108,19 @@ bool AuthManager::authWithDeviceCode()
 
 		postData = "client_id=" + clientId + "&client_secret=" + clientSecret + "&device_code=" + deviceCode + "&grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Adevice_code";
 
+        // Get response and code
 		httpResponseCode = http.POST(postData);
-        response_string = http.getString();
+        responseString = http.getString();
+
+        printHttpResp(httpResponseCode, responseString);
+
 		Serial.println("Waiting for authorization.");
-		Serial.println("HTTP Response Code: " + String(httpResponseCode));
-		Serial.println("Response: " + response_string);
     }
-    while (httpResponseCode != 200);
+    while (httpResponseCode != HTTP_CODE_OK); //TODO: add timeout
 
     http.end();
 
-    deserializeJson(response, response_string);
+    deserializeJson(response, responseString);
 
     if(response["access_token"].is<String>() && 
        response["refresh_token"].is<String>() &&
@@ -137,24 +143,30 @@ bool AuthManager::authWithDeviceCode()
 /**
  * @brief Generate new auth token using refresh token.
  * 
- * @return true Generated new token succesfuly.
+ * @return true Generated new token successfully.
  * @return false Failed to generate new token.
  */
 bool AuthManager::authWithRefreshToken()
 {
-     HTTPClient http;
+    HTTPClient http;
     http.begin("https://oauth2.googleapis.com/token");
     http.addHeader("Content-Type", "application/x-www-form-urlencoded");
 
     String postData = "client_id=" + clientId + "&client_secret=" + clientSecret + "&refresh_token=" + refreshToken + "&grant_type=refresh_token";
+    
+    // Get response and code
     int httpResponseCode = http.POST(postData);
+    String responseString = http.getString();
 
-    if (httpResponseCode == 200) {
-        String response_string = http.getString();
+    printHttpResp(httpResponseCode, responseString);
+
+    if (httpResponseCode == HTTP_CODE_OK) {
+
+        Serial.println("\33[0;32mAuthenticated using refresh token.\33[0m");
+
         JsonDocument response;
-        deserializeJson(response, response_string);
-        Serial.println("Authenticated using refresh token.");
-        Serial.println("Response: " + response_string);
+        deserializeJson(response, responseString);
+        http.end();
 
         // Save access tokens
         if(response["access_token"].is<String>() &&
@@ -168,17 +180,16 @@ bool AuthManager::authWithRefreshToken()
             return false;
         }
 
-        http.end();
         return true;
     } else {
-        Serial.println("Failed to authenticate using refresh token. HTTP Response Code: " + String(httpResponseCode));
-        http.end();
+        Serial.println("\33[0;31mFailed to authenticate using refresh token. HTTP Response Code: " + String(httpResponseCode) + "\33[0m");
+
         return false;
     }
 }
 
 /**
- * @brief Save refresh token to persistant memory.
+ * @brief Save refresh token to persistent memory.
  * @todo - better memory management
  */
 void AuthManager::saveRefreshToken()
@@ -192,7 +203,7 @@ void AuthManager::saveRefreshToken()
 }
 
 /**
- * @brief Read refresh token from persistant memory.
+ * @brief Read refresh token from persistent memory.
  * 
  */
 void AuthManager::readRefreshToken()

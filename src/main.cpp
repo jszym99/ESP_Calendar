@@ -91,7 +91,7 @@ void loop()
 	if(WiFi.status() == WL_CONNECTED && isConnected == false)
 	{
         // Print Network status
-        Serial.println("WiFi connected!");
+        Serial.println("\033[0;32mWiFi connected!\033[0m");
         Serial.print("ESP32 IP Address: ");
         Serial.println(WiFi.localIP());
 

@@ -64,3 +64,30 @@ time_t datetimeToSeconds(const String& datetime) {
 
     return mktime(&tmTime);
 }
+
+void printHttpResp(int code, String response)
+{
+
+    Serial.print("HTTP Response Code: ");
+
+    switch (code/100)
+    {
+    case 1:
+    case 2:
+        Serial.print("\33[0;32m");
+        break;
+    case 3:
+    case 4:
+    case 5:
+        Serial.print("\33[0;31m");
+        break;
+    default:
+        Serial.print("\33[0m");
+        break;
+    }
+
+    Serial.println(code);
+    Serial.print("\33[0m");
+
+    Serial.println("Response: " + response);
+}

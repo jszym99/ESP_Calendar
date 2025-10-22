@@ -41,8 +41,7 @@ public:
     void displayHeader();
 
     void addItem(std::string summary, std::string header, std::string footer);
-    void addItem(std::string summary) {addItem(summary, "", "");};
-    void dsiplay();
+    void display();
     void clearItems();
 
     void setBrightness(uint8_t value);

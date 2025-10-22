@@ -56,7 +56,7 @@ void DisplayManager::addItem(std::string summary, std::string header, std::strin
     items.push_back(displayItem{summary, header, footer});
 }
 
-void DisplayManager::dsiplay()
+void DisplayManager::display()
 {
     uint8_t startY = 24;
 

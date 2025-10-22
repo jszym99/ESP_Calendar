@@ -74,4 +74,6 @@ inline std::vector<T> updateVector(std::vector<T> oldVector, std::vector<T> newV
     return oldVector;
 }
 
+void printHttpResp(int code, String response);
+
 #endif /* UTILS_H */

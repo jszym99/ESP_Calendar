@@ -19,7 +19,7 @@ CalManager::~CalManager()
 void CalManager::fetchCalendarList(const String accessToken)
 {
     JsonDocument response;
-    String response_string;
+    String responseString;
 
     const char fields[] = "fields=items(id,summary,description,primary)";
 
@@ -29,21 +29,23 @@ void CalManager::fetchCalendarList(const String accessToken)
     http.begin(URL);
     http.addHeader("Authorization",  "Bearer " + accessToken);
 
+    // Get response and code
     int httpResponseCode = http.GET();
-    Serial.println("HTTP Response Code: " + String(httpResponseCode));
-
+    responseString = http.getString();
+    
+    printHttpResp(httpResponseCode, responseString);
+    
+    // TODO: Fallback on request error
     if(httpResponseCode != HTTP_CODE_OK)
     {
         http.end();
         return;
     }
 
-    response_string = http.getString();
-    Serial.println("Response: " + response_string);
 
     http.end();
 
-    deserializeJson(response, response_string);
+    deserializeJson(response, responseString);
 
     Calendar calendar = {};
     std::vector<Calendar> newCalendarList = {};
@@ -68,7 +70,7 @@ void CalManager::fetchCalendarList(const String accessToken)
 std::vector<EventData> CalManager::listCalendarEvents(const String accessToken, std::string calendarId)
 {
     JsonDocument response;
-    String response_string;
+    String responseString;
     EventData newEvent;
     std::vector<EventData> newEvents = {};
     
@@ -100,22 +102,22 @@ std::vector<EventData> CalManager::listCalendarEvents(const String accessToken, 
 
     Serial.println("Request: " + String(URL.c_str()));
 
-    // TODO: Fallback on request error
+    // Get response and code
     int httpResponseCode = http.GET();
-    Serial.println("HTTP Response Code: " + String(httpResponseCode));
-
+    responseString = http.getString();
+    
+    printHttpResp(httpResponseCode, responseString);
+    
+    // TODO: Fallback on request error
     if(httpResponseCode != HTTP_CODE_OK)
     {
         http.end();
         return newEvents;
     }
 
-    response_string = http.getString();
-    Serial.println("Response: " + response_string);
-
     http.end();
 
-    deserializeJson(response, response_string);
+    deserializeJson(response, responseString);
 
     // Check for keys and save events info
     for(int i = 0; i < response["items"].size(); i++)
@@ -236,7 +238,7 @@ void CalManager::showEvents()
 
             display->addItem(ev.summary, date, time);
         }
-        display->dsiplay();
+        display->display();
         pendingUpdate = false;
     }
 }
