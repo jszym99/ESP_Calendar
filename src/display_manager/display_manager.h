@@ -46,6 +46,11 @@ public:
 
     void setBrightness(uint8_t value);
     uint8_t getBrightness() {return brightness;}
+    void setPrimaryColor(uint16_t color) { primaryColor = color; }
+    void setBackgroundColor(uint16_t color) { backgroundColor = color; }
+    // Hex-string versions ("#RRGGBB") for web UI convenience
+    uint16_t getPrimaryColorHex() {return primaryColor;}
+    uint16_t getBackgroundColorHex() {return backgroundColor;}
 };
 
 

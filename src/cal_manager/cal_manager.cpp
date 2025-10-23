@@ -52,11 +52,15 @@ void CalManager::fetchCalendarList(const String accessToken)
     
     for(int i = 0; i < response["items"].size(); i++)
     {
+        calendar = {};
         calendar.calendarId = response["items"][i]["id"].as<std::string>();
 
         calendar.summary = response["items"][i]["summary"].as<std::string>();
-        calendar.description = response["items"][i]["description"].as<std::string>();
-        if(response["items"][i]["primary"].is<bool>() & response["items"][i]["primary"].as<bool>() == true)
+        if(response["items"][i]["description"].is<std::string>())
+        {
+            calendar.description = response["items"][i]["description"].as<std::string>();
+        }
+        if(response["items"][i]["primary"].is<bool>() && response["items"][i]["primary"].as<bool>() == true)
         {
             calendar.primary = true;
         }
@@ -241,4 +245,21 @@ void CalManager::showEvents()
         display->display();
         pendingUpdate = false;
     }
+}
+
+const std::vector<Calendar>& CalManager::getCalendarList() const
+{
+    return calendarList;
+}
+
+void CalManager::enableCalendar(size_t index)
+{
+    if(index >= calendarList.size()) return;
+    calendarList[index].enabled = true;
+}
+
+void CalManager::disableCalendar(size_t index)
+{
+    if(index >= calendarList.size()) return;
+    calendarList[index].enabled = false;
 }

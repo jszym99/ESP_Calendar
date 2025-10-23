@@ -62,6 +62,7 @@ void DisplayManager::display()
 
     displayHeader();
 
+    tft.fillRect(0, 24, TFT_WIDTH, TFT_HEIGHT-24, backgroundColor);
     for(auto it : items)
     {
         startY = drawItem(startY, it.body, it.header, it.footer);

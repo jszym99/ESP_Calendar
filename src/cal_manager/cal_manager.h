@@ -78,6 +78,12 @@ public:
     std::vector<EventData> listCalendarEvents(const String accessToken, std::string calendarId = "primary");
 
     void showEvents();
+
+    // Return read-only reference to calendar list for external rendering
+    const std::vector<Calendar>& getCalendarList() const;
+
+    void enableCalendar(size_t index);
+    void disableCalendar(size_t index);
 };
 
 #endif /* CAL_MANAGER_H */

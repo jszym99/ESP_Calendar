@@ -11,6 +11,7 @@
 #include "display_manager/display_manager.h"
 #include "touch_button/touch_button.h"
 #include "utils/utils.h"
+#include "web_manager/web_manager.h"
 
 #define TOUCH_PIN T9
 
@@ -23,6 +24,7 @@ AuthManager oauth = AuthManager(CLIENT_ID, CLIENT_SECRET); // TODO: Read cliend 
 DisplayManager display = DisplayManager();
 CalManager calendar = CalManager(&display);
 TouchButton touchBtn = TouchButton(TOUCH_PIN);
+WebManager web;
 
 void update()
 {
@@ -52,6 +54,9 @@ void setup()
 	WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 
 	Serial.begin(115200);
+
+    // Initialize web manager (routes can be registered now)
+    web.init(&calendar, &display);
 }
 
 void loop()
@@ -106,6 +111,9 @@ void loop()
         
         calendar.fetchCalendarList(oauth.getAccessToken());
 
+        // Start HTTP server once we have WiFi
+        web.start();
+
 		isConnected = true;
 	}
 	
@@ -136,6 +144,14 @@ void loop()
         {
             update();
             lastUpdate = millis();
+        }
+        // Process web server client connections
+        web.handle();
+
+        // If web UI requested calendar refresh, perform it here with OAuth token
+        if(web.consumeRefreshRequest())
+        {
+            calendar.fetchCalendarList(oauth.getAccessToken());
         }
     }
     else // WiFi not connected - AP mode
