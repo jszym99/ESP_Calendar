@@ -52,14 +52,13 @@ private:
     std::vector<EventData> events = {};
     std::vector<Calendar> calendarList = {};
     bool pendingUpdate = false;
-    DisplayManager *display;
 public:
     /**
      * @brief Construct a new Cal Manager object.
      * 
      * @param func Access token getter function.
      */
-    CalManager(DisplayManager *displayManager);
+    CalManager();
 
     /**
      * @brief Destroy the Cal Manager object.

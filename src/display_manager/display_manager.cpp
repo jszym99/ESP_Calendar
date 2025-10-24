@@ -2,19 +2,21 @@
 #include "fonts/binaryttf.h"
 #include "utils/utils.h"
 
+
+TFT_eSPI DisplayManager::tft = TFT_eSPI();
+uint8_t DisplayManager::smallFont = 16;
+uint8_t DisplayManager::largeFont = 24;
+uint16_t DisplayManager::primaryColor = TFT_WHITE;
+uint16_t DisplayManager::backgroundColor = TFT_BLACK;
+uint8_t DisplayManager::brightness = 255;
+OpenFontRender DisplayManager::render;
+std::vector<DisplayItem> DisplayManager::items;
+
 // Constants
 constexpr uint8_t xMargin = 4;
 constexpr uint8_t xTextMargin = xMargin + 8;
 constexpr uint8_t cellWidth = TFT_WIDTH-2*xMargin-1;
 constexpr uint8_t tftHeight = 230; //TFT_HEIGHT;
-
-DisplayManager::DisplayManager()
-{
-}
-
-DisplayManager::~DisplayManager()
-{
-}
 
 void DisplayManager::init()
 {
@@ -53,7 +55,7 @@ void DisplayManager::displayHeader()
 
 void DisplayManager::addItem(std::string summary, std::string header, std::string footer)
 {
-    items.push_back(displayItem{summary, header, footer});
+    items.push_back(DisplayItem{summary, header, footer});
 }
 
 void DisplayManager::display()

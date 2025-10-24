@@ -10,7 +10,7 @@ public:
     WebManager();
     ~WebManager();
 
-    void init(CalManager *calManager, DisplayManager *display);
+    void init(CalManager *calManager);
     void start();
     // Process incoming client connections (call regularly from loop())
     void handle();
@@ -18,7 +18,6 @@ public:
 private:
     WebServer server{80};
     CalManager *cal = nullptr;
-    DisplayManager *dis = nullptr;
     void registerRoutes();
     bool pendingRefresh = false;
 public:

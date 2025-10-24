@@ -57,10 +57,9 @@ WebManager::~WebManager()
     server.stop();
 }
 
-void WebManager::init(CalManager *calManager, DisplayManager *display)
+void WebManager::init(CalManager *calManager)
 {
     cal = calManager;
-    dis = display;
     registerRoutes();
 }
 
@@ -86,11 +85,10 @@ void WebManager::registerRoutes()
 
         std::string primaryHex = "#FFFFFF";
         std::string bgHex = "#000000";
-        if(dis) {
-            // DisplayManager stores colors as 16-bit RGB565; convert to #RRGGBB for the web UI
-            primaryHex = rgb565ToHex(dis->getPrimaryColorHex());
-            bgHex = rgb565ToHex(dis->getBackgroundColorHex());
-        }
+        
+        // DisplayManager stores colors as 16-bit RGB565; convert to #RRGGBB for the web UI
+        primaryHex = rgb565ToHex(DisplayManager::getPrimaryColor());
+        bgHex = rgb565ToHex(DisplayManager::getBackgroundColor());
 
         std::string html = HtmlRenderer::renderSettingsPage(cal->getCalendarList(), primaryHex, bgHex);
         server.send(200, "text/html; charset=utf-8", html.c_str());
@@ -118,32 +116,30 @@ void WebManager::registerRoutes()
         // Update colors
         if(server.hasArg("primaryColor") || server.hasArg("bgColor"))
         {
-            bool changed = false;
-            if(dis) {
-                if(server.hasArg("primaryColor"))
+        bool changed = false;
+            if(server.hasArg("primaryColor"))
+            {
+                std::string s = normalizeHex(server.arg("primaryColor")).c_str();
+                if(isValidHex6(s))
                 {
-                    std::string s = normalizeHex(server.arg("primaryColor")).c_str();
-                    if(isValidHex6(s))
-                    {
-                        uint16_t col = hexTo565(s);
-                        dis->setPrimaryColor(col);
-                        changed = true;
-                    }
+                    uint16_t col = hexTo565(s);
+                    DisplayManager::setPrimaryColor(col);
+                    changed = true;
                 }
-                if(server.hasArg("bgColor"))
+            }
+            if(server.hasArg("bgColor"))
+            {
+                std::string s = normalizeHex(server.arg("bgColor")).c_str();
+                if(isValidHex6(s))
                 {
-                    std::string s = normalizeHex(server.arg("bgColor")).c_str();
-                    if(isValidHex6(s))
-                    {
-                        uint16_t col = hexTo565(s);
-                        dis->setBackgroundColor(col);
-                        changed = true;
-                    }
+                    uint16_t col = hexTo565(s);
+                    DisplayManager::setBackgroundColor(col);
+                    changed = true;
                 }
+            }
 
-                if(changed) {
-                    dis->display(); // Perform refresh if any color changed
-                }
+            if(changed) {
+                DisplayManager::display(); // Perform refresh if any color changed
             }
         }
 

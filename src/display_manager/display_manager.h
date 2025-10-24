@@ -10,7 +10,7 @@
 
 constexpr uint8_t maxDisplayBrightness = UINT8_MAX;
 
-struct displayItem
+struct DisplayItem
 {
     std::string body;
     std::string header;
@@ -20,37 +20,33 @@ struct displayItem
 class DisplayManager
 {
 private:
-    TFT_eSPI tft = TFT_eSPI();
-    OpenFontRender render;
-    // CalManager calendar;
-    uint8_t smallFont = 16;
-    uint8_t largeFont = 24;
-    uint16_t primaryColor = TFT_WHITE;
-    uint16_t backgroundColor = TFT_BLACK;
-    uint8_t brightness = 255;
-    std::vector<displayItem> items = {};
-
-    uint8_t drawItem(uint8_t startLine, std::string summary, std::string date = "", std::string duration = "");
+    static TFT_eSPI tft;
+    static OpenFontRender render;
+    static uint8_t smallFont;
+    static uint8_t largeFont;
+    static uint16_t primaryColor;
+    static uint16_t backgroundColor;
+    static uint8_t brightness;
+    static std::vector<DisplayItem> items;
 
 public:
-    DisplayManager();
-    ~DisplayManager();
+    static void init();
 
-    void init();
+    static void displayHeader();
 
-    void displayHeader();
+    static void addItem(std::string summary, std::string header, std::string footer);
+    static void display();
+    static void clearItems();
 
-    void addItem(std::string summary, std::string header, std::string footer);
-    void display();
-    void clearItems();
+    static void setBrightness(uint8_t value);
+    static uint8_t getBrightness() {return brightness;}
+    static void setPrimaryColor(uint16_t color) { primaryColor = color; }
+    static void setBackgroundColor(uint16_t color) { backgroundColor = color; }
+    static uint16_t getPrimaryColor() {return primaryColor;}
+    static uint16_t getBackgroundColor() {return backgroundColor;}
 
-    void setBrightness(uint8_t value);
-    uint8_t getBrightness() {return brightness;}
-    void setPrimaryColor(uint16_t color) { primaryColor = color; }
-    void setBackgroundColor(uint16_t color) { backgroundColor = color; }
-    // Hex-string versions ("#RRGGBB") for web UI convenience
-    uint16_t getPrimaryColorHex() {return primaryColor;}
-    uint16_t getBackgroundColorHex() {return backgroundColor;}
+private:
+    static uint8_t drawItem(uint8_t startLine, std::string summary, std::string date = "", std::string duration = "");
 };
 
 

@@ -7,9 +7,8 @@
 
 static HTTPClient http;
 
-CalManager::CalManager(DisplayManager *displayManager)
+CalManager::CalManager()
 {
-    display = displayManager;
 }
 
 CalManager::~CalManager()
@@ -215,7 +214,7 @@ void CalManager::showEvents()
         std::string time;
         std::string date;
 
-        display->clearItems();
+        DisplayManager::clearItems();
 
         for(const auto &ev : events)
         {
@@ -240,9 +239,9 @@ void CalManager::showEvents()
                 date += ", Today";
             }
 
-            display->addItem(ev.summary, date, time);
+            DisplayManager::addItem(ev.summary, date, time);
         }
-        display->display();
+        DisplayManager::display();
         pendingUpdate = false;
     }
 }

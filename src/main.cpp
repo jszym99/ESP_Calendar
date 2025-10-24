@@ -21,8 +21,7 @@ WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP);
 
 AuthManager oauth = AuthManager(CLIENT_ID, CLIENT_SECRET); // TODO: Read cliend ID and Secret from EEPROM
-DisplayManager display = DisplayManager();
-CalManager calendar = CalManager(&display);
+CalManager calendar = CalManager();
 TouchButton touchBtn = TouchButton(TOUCH_PIN);
 WebManager web;
 
@@ -40,13 +39,13 @@ void update()
     // Get events
     calendar.fetchEvents(oauth.getAccessToken());
     calendar.showEvents();
-    display.displayHeader();
+    DisplayManager::displayHeader();
 }
 
 void setup()
 {
     // Initialize hardware
-    display.init();
+    DisplayManager::init();
     touchBtn.init();
     
     // Start WiFi connection
@@ -56,7 +55,7 @@ void setup()
 	Serial.begin(115200);
 
     // Initialize web manager (routes can be registered now)
-    web.init(&calendar, &display);
+    web.init(&calendar);
 }
 
 void loop()
@@ -68,26 +67,26 @@ void loop()
     // Cycle brightness on touch
     if(touchBtn.isClick())
     {
-        uint8_t displayBrightness = display.getBrightness();
+        uint8_t displayBrightness = DisplayManager::getBrightness();
         if(displayBrightness == maxDisplayBrightness)
         {
-            display.setBrightness(0);
+            DisplayManager::setBrightness(0);
         }
         else
         {
             uint8_t newBrightness = displayBrightness + (maxDisplayBrightness+1)/4;
             if(newBrightness > displayBrightness)
             {
-                display.setBrightness(newBrightness);
+                DisplayManager::setBrightness(newBrightness);
             }
             else
             {
-                display.setBrightness(maxDisplayBrightness);
+                DisplayManager::setBrightness(maxDisplayBrightness);
             }
         }
         Serial.println("Touch button clicked.");
         Serial.print("Display brightness:");
-        Serial.print(((display.getBrightness()*100)/maxDisplayBrightness));
+        Serial.print(((DisplayManager::getBrightness()*100)/maxDisplayBrightness));
         Serial.println("%");
 
     }
