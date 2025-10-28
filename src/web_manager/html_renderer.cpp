@@ -15,19 +15,19 @@ std::string HtmlRenderer::renderSettingsPage(const std::vector<Calendar> &calend
     // Calendars
     html += "<div class=panel>";
     html += "<h2 style='margin:0 0 10px 0;font-size:15px'>Calendars</h2>";
-    for(size_t i = 0; i < calendars.size(); ++i)
+    for(Calendar cal : calendars)
     {
-        const auto &c = calendars[i];
         html += "<div class=cal>";
-        html += "<div class=actions><label class=\"switch\"><input type=checkbox name=cal_enabled_" + std::to_string(i) + (c.enabled?" checked":"") + "><span class=\"slider\"></span></label></div>";
-        html += "<div class=meta><div class=title>" + (c.summary.empty()?"(Unnamed)":c.summary) + "</div>";
-        if(!c.description.empty()) {
-            html += "<div class=desc>" + c.description + "</div>";
+        html += "<div class=actions><label class=\"switch\"><input type=checkbox name=cal_enabled_" + cal.getId() + (cal.isEnabled()?" checked":"") + "><span class=\"slider\"></span></label></div>";
+        html += "<div class=meta><div class=title>" + (cal.getSummary().empty()?"(Unnamed)":cal.getSummary()) + "</div>";
+        
+        if(!cal.getDescription().empty()) {
+            html += "<div class=desc>" + cal.getDescription() + "</div>";
         }
-        if(c.primary) {
+        if(cal.isPrimary()) {
             html += "<div class=primary>Primary calendar</div>";
         }
-        html += "<div class=id>ID: " + c.calendarId + "</div></div>";
+        html += "<div class=id>ID: " + cal.getId()+ "</div></div>";
         html += "</div>";
     }
     html += "</div>";

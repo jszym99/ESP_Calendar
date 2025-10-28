@@ -96,35 +96,52 @@ void WebManager::registerRoutes()
 
     // Settings handler - update calendar enabled/primary and colors
     server.on("/settings", HTTP_POST, [this]() {
-        if(!cal) { server.send(500, "text/plain", "CalManager not initialized"); return; }
-
-        const auto &cals = cal->getCalendarList();
-        // Update enabled flags
-        for(size_t i = 0; i < cals.size(); ++i)
+        if(!cal)
         {
-            String argName = "cal_enabled_" + String(i);
+            server.send(500, "text/plain", "CalManager not initialized");
+            return;
+        }
+
+        bool toggled = false;
+
+        for(Calendar * const c : cal->getCalendarPtrList())
+        {
+            std::string argName = "cal_enabled_" + c->getId();
             if(server.hasArg(argName.c_str()))
             {
-                cal->enableCalendar(i);
+                toggled = !c->isEnabled() ? true : toggled;
+                c->enable();
             }
             else
             {
-                cal->disableCalendar(i);
+                toggled = c->isEnabled() ? true : toggled;
+                c->disable();
             }
+        }
+
+        if(toggled)
+        {
+            cal->fetchEvents();
+            cal->showEvents();
         }
 
         // Update colors
         if(server.hasArg("primaryColor") || server.hasArg("bgColor"))
         {
-        bool changed = false;
+            bool changed = false;
             if(server.hasArg("primaryColor"))
             {
                 std::string s = normalizeHex(server.arg("primaryColor")).c_str();
                 if(isValidHex6(s))
                 {
                     uint16_t col = hexTo565(s);
+                    
+                    if(DisplayManager::getPrimaryColor() != col)
+                    {
+                        changed = true;
+                    }
+
                     DisplayManager::setPrimaryColor(col);
-                    changed = true;
                 }
             }
             if(server.hasArg("bgColor"))
@@ -133,8 +150,13 @@ void WebManager::registerRoutes()
                 if(isValidHex6(s))
                 {
                     uint16_t col = hexTo565(s);
+
+                    if(DisplayManager::getBackgroundColor() != col)
+                    {
+                        changed = true;
+                    }
+
                     DisplayManager::setBackgroundColor(col);
-                    changed = true;
                 }
             }
 
