@@ -21,7 +21,7 @@ WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP);
 
 AuthManager oauth = AuthManager(CLIENT_ID, CLIENT_SECRET); // TODO: Read cliend ID and Secret from EEPROM
-CalManager calendar = CalManager();
+CalManager calendar = CalManager(&oauth);
 TouchButton touchBtn = TouchButton(TOUCH_PIN);
 WebManager web;
 
@@ -37,7 +37,7 @@ void update()
     Serial.println(datetimeToString(now(), true, false).c_str());
 
     // Get events
-    calendar.fetchEvents(oauth.getAccessToken());
+    calendar.fetchEvents();
     calendar.showEvents();
     DisplayManager::displayHeader();
 }
@@ -108,7 +108,7 @@ void loop()
             lastToken = millis();
         }
         
-        calendar.fetchCalendarList(oauth.getAccessToken());
+        calendar.fetchCalendarList();
 
         // Start HTTP server once we have WiFi
         web.start();
@@ -150,7 +150,7 @@ void loop()
         // If web UI requested calendar refresh, perform it here with OAuth token
         if(web.consumeRefreshRequest())
         {
-            calendar.fetchCalendarList(oauth.getAccessToken());
+            calendar.fetchCalendarList();
         }
     }
     else // WiFi not connected - AP mode
