@@ -6,10 +6,10 @@
 class AuthManager
 {
 private:
-    String accessToken;
-    String refreshToken;
-    String clientId;
-    String clientSecret;
+    std::string accessToken;
+    std::string refreshToken;
+    std::string clientId;
+    std::string clientSecret;
     uint16_t tokenLifetime;
 
     void saveRefreshToken();
@@ -18,12 +18,12 @@ private:
     bool authWithRefreshToken();
 
 public:
-    AuthManager(String _clientId, String _clientSecret);
+    AuthManager(std::string _clientId, std::string _clientSecret);
     ~AuthManager();
 
     bool authenticate();
 
-    String getAccessToken() {return accessToken;}
+    std::string getAccessToken() {return accessToken;}
     uint16_t getTokenLifetime() {return tokenLifetime;}
 };
 

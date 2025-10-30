@@ -6,15 +6,15 @@
 #define EEPROM_SIZE 512
 #define REFRESH_TOKEN_ADDRESS 0
 
-const String codeURL = "https://oauth2.googleapis.com/device/code";
-const String tokenURL = "https://oauth2.googleapis.com/token";
-const String scope = "https://www.googleapis.com/auth/calendar.readonly";
+const char codeURL[] = "https://oauth2.googleapis.com/device/code";
+const char tokenURL[] = "https://oauth2.googleapis.com/token";
+const char scope[] = "https://www.googleapis.com/auth/calendar.readonly";
 
-const String headerName = "Content-Type";
-const String headerValue = "application/x-www-form-urlencoded";
+const char headerName[] = "Content-Type";
+const char headerValue[] = "application/x-www-form-urlencoded";
 
 
-AuthManager::AuthManager(String _clientId, String _clientSecret)
+AuthManager::AuthManager(std::string _clientId, std::string _clientSecret)
 {
     clientId = _clientId;
     clientSecret = _clientSecret;
@@ -36,14 +36,15 @@ AuthManager::~AuthManager()
 bool AuthManager::authenticate()
 {
     // Read refresh token from EEPROM if necessary
-    if(refreshToken.isEmpty())
+    if(refreshToken.empty())
     {
         readRefreshToken();
     }
 
     // Authenticate with refresh token
-    if (!refreshToken.isEmpty()) {
-        Serial.println("Refresh token: " + refreshToken);
+    if (!refreshToken.empty()) {
+        Serial.print("Refresh token: ");
+        Serial.println(refreshToken.c_str());
         if (authWithRefreshToken()) {
             return true;
         }
@@ -62,9 +63,9 @@ bool AuthManager::authWithDeviceCode()
 {
     HTTPClient http;
     JsonDocument response;
-    String postData = "client_id=" + clientId + "&scope=" + scope;
+    std::string postData = "client_id=" + clientId + "&scope=" + scope;
     String responseString;
-    String deviceCode;
+    std::string deviceCode;
     uint16_t interval = 5000;
 
     /* Request device and user codes */
@@ -72,7 +73,7 @@ bool AuthManager::authWithDeviceCode()
     http.addHeader("Content-Type", "application/x-www-form-urlencoded");
 
     // Get response and code
-    int httpResponseCode = http.POST(postData);
+    int httpResponseCode = http.POST(postData.c_str());
     responseString = http.getString();
     
     printHttpResp(httpResponseCode, responseString);
@@ -104,12 +105,12 @@ bool AuthManager::authWithDeviceCode()
         http.begin(tokenURL);
         http.addHeader("Content-Type", "application/x-www-form-urlencoded");
 
-        deviceCode = response["device_code"].as<String>();
+        deviceCode = response["device_code"].as<std::string>();
 
 		postData = "client_id=" + clientId + "&client_secret=" + clientSecret + "&device_code=" + deviceCode + "&grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Adevice_code";
 
         // Get response and code
-		httpResponseCode = http.POST(postData);
+		httpResponseCode = http.POST(postData.c_str());
         responseString = http.getString();
 
         printHttpResp(httpResponseCode, responseString);
@@ -122,12 +123,12 @@ bool AuthManager::authWithDeviceCode()
 
     deserializeJson(response, responseString);
 
-    if(response["access_token"].is<String>() && 
-       response["refresh_token"].is<String>() &&
+    if(response["access_token"].is<std::string>() && 
+       response["refresh_token"].is<std::string>() &&
        response["expires_in"].is<uint16_t>())
     {
-        accessToken = response["access_token"].as<String>();
-        refreshToken = response["refresh_token"].as<String>();
+        accessToken = response["access_token"].as<std::string>();
+        refreshToken = response["refresh_token"].as<std::string>();
         tokenLifetime = response["expires_in"];
         saveRefreshToken(); // Save to EEPROM
     }
@@ -152,10 +153,10 @@ bool AuthManager::authWithRefreshToken()
     http.begin("https://oauth2.googleapis.com/token");
     http.addHeader("Content-Type", "application/x-www-form-urlencoded");
 
-    String postData = "client_id=" + clientId + "&client_secret=" + clientSecret + "&refresh_token=" + refreshToken + "&grant_type=refresh_token";
+    std::string postData = "client_id=" + clientId + "&client_secret=" + clientSecret + "&refresh_token=" + refreshToken + "&grant_type=refresh_token";
     
     // Get response and code
-    int httpResponseCode = http.POST(postData);
+    int httpResponseCode = http.POST(postData.c_str());
     String responseString = http.getString();
 
     printHttpResp(httpResponseCode, responseString);
@@ -169,10 +170,10 @@ bool AuthManager::authWithRefreshToken()
         http.end();
 
         // Save access tokens
-        if(response["access_token"].is<String>() &&
+        if(response["access_token"].is<std::string>() &&
            response["expires_in"].is<uint16_t>())
         {
-            accessToken = response["access_token"].as<String>();
+            accessToken = response["access_token"].as<std::string>();
             tokenLifetime = response["expires_in"];
         }
         else
@@ -209,7 +210,7 @@ void AuthManager::saveRefreshToken()
 void AuthManager::readRefreshToken()
 {
     EEPROM.begin(EEPROM_SIZE);
-    String token = "";
+    std::string token = "";
     char ch;
     for (int i = 0; i < EEPROM_SIZE; i++) {
         ch = EEPROM.read(REFRESH_TOKEN_ADDRESS + i);
