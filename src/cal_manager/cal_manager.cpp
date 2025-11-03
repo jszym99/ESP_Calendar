@@ -27,7 +27,7 @@ void CalManager::fetchCalendarList()
     const char URL[] = "https://www.googleapis.com/calendar/v3/users/me/calendarList?fields=items(id,summary,description,primary)";
  
     http.begin(URL);
-    http.addHeader("Authorization",  "Bearer " + auth->getAccessToken());
+    http.addHeader("Authorization",  "Bearer " + String(auth->getAccessToken().c_str()));
 
     // Get response and code
     int httpResponseCode = http.GET();
@@ -107,7 +107,7 @@ std::vector<CalendarEvent> CalManager::listCalendarEvents(std::string calendarId
     // const std::string params = "/events?maxResults=" + std::to_string(eventCount)+ ;
 
 	http.begin(URL.c_str());
-    http.addHeader("Authorization",  "Bearer " + auth->getAccessToken());
+    http.addHeader("Authorization",  "Bearer " + String(auth->getAccessToken().c_str()));
 
     Serial.println("Request: " + String(URL.c_str()));
 
@@ -211,26 +211,6 @@ void CalManager::fetchEvents()
     {
         pendingUpdate = true;
         events = newEvents;
-    }
-}
-
-void CalManager::showEvents()
-{
-    if(pendingUpdate)
-    {
-        std::string startTime;
-        std::string endTime;
-        std::string time;
-        std::string date;
-
-        DisplayManager::clearItems();
-
-        for(CalendarEvent ev : events)
-        {
-            DisplayManager::addItem(ev.getSummary(), ev.getDateStr(), ev.getDurationStr());
-        }
-        DisplayManager::display();
-        pendingUpdate = false;
     }
 }
 

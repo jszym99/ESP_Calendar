@@ -25,6 +25,9 @@ CalManager calendar = CalManager(&oauth);
 TouchButton touchBtn = TouchButton(TOUCH_PIN);
 WebManager web;
 
+EventsPage testPage = EventsPage(16, 24, 0xFFFF, 0x0000);
+// DisplayManager::displayPage(0);
+
 void update()
 {
     // Fetch time from NTP
@@ -38,7 +41,14 @@ void update()
 
     // Get events
     calendar.fetchEvents();
-    calendar.showEvents();
+
+    const std::vector<CalendarEvent> events = calendar.getEvents();
+
+    CalendarItem item1 = CalendarItem(TextElement{.text = events[0].getDateStr(), .fontSize = 16},
+                                      TextElement{.text = events[0].getSummary(), .fontSize = 24},
+                                      TextElement{.text = events[0].getDateStr(), .fontSize = 16},
+                                      DisplayManager::getPrimaryColor(), DisplayManager::getBackgroundColor());
+
     DisplayManager::displayHeader();
 }
 
@@ -46,6 +56,7 @@ void setup()
 {
     // Initialize hardware
     DisplayManager::init();
+    DisplayManager::displayPage(DisplayManager::addPage(&testPage));
     touchBtn.init();
     
     // Start WiFi connection

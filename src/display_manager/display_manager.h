@@ -6,11 +6,13 @@
 #include <TimeLib.h>
 #include <OpenFontRender.h>
 // #include "cal_manager/cal_manager.h"
+#include "display_page.h"
 #include <vector>
 
 constexpr uint8_t maxDisplayBrightness = UINT8_MAX;
+constexpr uint8_t maxPages = 5;
 
-struct DisplayItem
+struct DisplayItemS
 {
     std::string body;
     std::string header;
@@ -27,12 +29,17 @@ private:
     static uint16_t primaryColor;
     static uint16_t backgroundColor;
     static uint8_t brightness;
-    static std::vector<DisplayItem> items;
+    static std::vector<DisplayItemS> items;
+    static DisplayPage *pages[maxPages];
+    static uint8_t pageCount;
 
 public:
     static void init();
 
     static void displayHeader();
+
+    static uint8_t addPage(DisplayPage *page);
+    static void displayPage(uint8_t index);
 
     static void addItem(std::string summary, std::string header, std::string footer);
     static void display();

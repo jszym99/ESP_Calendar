@@ -10,7 +10,9 @@ uint16_t DisplayManager::primaryColor = TFT_WHITE;
 uint16_t DisplayManager::backgroundColor = TFT_BLACK;
 uint8_t DisplayManager::brightness = 255;
 OpenFontRender DisplayManager::render;
-std::vector<DisplayItem> DisplayManager::items;
+std::vector<DisplayItemS> DisplayManager::items;
+DisplayPage *DisplayManager::pages[maxPages];
+uint8_t DisplayManager::pageCount;
 
 // Constants
 constexpr uint8_t xMargin = 4;
@@ -33,6 +35,10 @@ void DisplayManager::init()
         return;
     }
     render.setDrawer(tft); // Set drawer object
+
+    // static DisplayPage events = EventsPage(&render, smallFont, largeFont, primaryColor, backgroundColor);
+    // pages = &events;
+    // pageCount = 1;
 }
 
 void DisplayManager::displayHeader()
@@ -55,7 +61,7 @@ void DisplayManager::displayHeader()
 
 void DisplayManager::addItem(std::string summary, std::string header, std::string footer)
 {
-    items.push_back(DisplayItem{summary, header, footer});
+    items.push_back(DisplayItemS{summary, header, footer});
 }
 
 void DisplayManager::display()
@@ -70,6 +76,11 @@ void DisplayManager::display()
         startY = drawItem(startY, it.body, it.header, it.footer);
     }
     // TODO: length limit
+
+    // for(uint8_t num = 0; num < pageCount; num++)
+    // {
+    //     pages[num].display(&tft, &render, startY);
+    // }
 }
 
 void DisplayManager::clearItems()
@@ -143,4 +154,21 @@ void DisplayManager::setBrightness(uint8_t value)
     // Update backlight PWM
     float tmp = brightness/16;
     analogWrite(TFT_BL, (UINT8_MAX - (tmp*tmp)));
+}
+
+uint8_t DisplayManager::addPage(DisplayPage *page)
+{
+    if(pageCount < maxPages)
+    {
+        pages[pageCount] = page;
+    }
+    return pageCount++;
+}
+
+void DisplayManager::displayPage(uint8_t index)
+{
+    if(index < pageCount)
+    {
+        pages[index]->display(&tft, &render, 24);
+    }
 }

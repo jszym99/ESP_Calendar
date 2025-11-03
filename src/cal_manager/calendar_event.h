@@ -15,9 +15,9 @@ public:
     CalendarEvent(std::string id, std::string sum, time_t start, time_t end, bool allDay);
     ~CalendarEvent();
 
-    std::string getSummary() {return summary;}
-    std::string getDateStr();
-    std::string getDurationStr();
+    std::string getSummary() const {return summary;}
+    std::string getDateStr() const;
+    std::string getDurationStr() const;
 
     // Overload == operator
     bool operator==(const CalendarEvent& other) const

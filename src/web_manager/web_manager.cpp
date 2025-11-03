@@ -122,7 +122,7 @@ void WebManager::registerRoutes()
         if(toggled)
         {
             cal->fetchEvents();
-            cal->showEvents();
+            // cal->showEvents();
         }
 
         // Update colors

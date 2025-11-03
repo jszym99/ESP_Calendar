@@ -41,7 +41,7 @@ public:
     void fetchEvents();
     std::vector<CalendarEvent> listCalendarEvents(std::string calendarId = "primary");
 
-    void showEvents();
+    const std::vector<CalendarEvent> &getEvents() {return events;}
 
     // Return read-only reference to calendar list for external rendering
     const std::vector<Calendar>& getCalendarList() const;
