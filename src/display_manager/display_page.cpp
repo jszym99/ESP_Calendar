@@ -1,55 +1,102 @@
 #include "display_page.h"
+#include "utils/utils.h"
 
-DisplayPage::DisplayPage(uint8_t smallFont, uint8_t largeFont, uint16_t primaryColor, uint16_t bgColor) :
-smallFont(smallFont), largeFont(largeFont), primaryColor(primaryColor), bgColor(bgColor) {}
-DisplayPage::DisplayPage() {}
-DisplayPage::~DisplayPage() {}
+// DisplayPage::DisplayPage(uint8_t smallFont, uint8_t largeFont, uint16_t primaryColor, uint16_t bgColor) :
+// smallFont(smallFont), largeFont(largeFont), primaryColor(primaryColor), bgColor(bgColor) {}
+DisplayPage::DisplayPage(uint16_t primaryColor, uint16_t bgColor) :
+primaryColor(primaryColor),
+bgColor(bgColor) {}
 
-void DisplayPage::display(TFT_eSPI *tft, OpenFontRender *render, uint8_t startY)
+DisplayPage::DisplayPage(WidgetBase *(*widgets), uint8_t widgetCount, uint16_t primaryColor, uint16_t bgColor) :
+primaryColor(primaryColor),
+bgColor(bgColor)
 {
-    for(uint8_t num = 0; num < itemCount; num++)
+    if(widgets != nullptr && widgetCount <= maxWidgets)
     {
-        items[num]->display(tft, render, startY);
-        startY += items[num]->getHeight();
+        for(uint8_t num = 0; num < widgetCount; num++)
+        {
+            addWidget(widgets[num]);
+        }
     }
 }
 
-EventsPage::EventsPage(uint8_t smallFont, uint8_t largeFont, uint16_t primaryColor, uint16_t bgColor) : 
-DisplayPage(smallFont,  largeFont, primaryColor, bgColor)
+void DisplayPage::display(TFT_eSPI *tft, OpenFontRender *render, bool fullUpdate)
 {
-    TextElement text = {
-        .text = "Test",
-        .fontSize = smallFont,
-    };
+    uint8_t startY = 0;
+    uint8_t endY = startY;
 
-    TextElement date{
-        .text = "Tue, 11 Nov",
-        .fontSize = smallFont,
-    };
-
-    TextElement summary = {
-        .text = "Test long event name",
-        .fontSize = largeFont,
-    };
-
-    TextElement duration = {
-        .text = "Duration",
-        .fontSize = smallFont,
-    };
-
-    static CalendarItem item1 = CalendarItem(date, summary, duration, primaryColor, bgColor);
-    static CalendarItem item2 = CalendarItem(date, summary, duration, primaryColor, bgColor);
-    static CalendarItem item3 = CalendarItem(date, summary, duration, primaryColor, bgColor);
-
-    static DisplayItem *itemList[] = {
-        &item1,
-        &item2,
-        &item3
-    };
-
-    items = itemList;
-    itemCount = sizeof(itemList)/sizeof(itemList[0]);
+    if(fullUpdate)
+    {
+        tft->fillScreen(bgColor);
+    }
+    
+    for(uint8_t num = 0; num < widgetCount; num++)
+    {
+        endY = startY + widgets[num]->getHeight(tft, render); // Check if fits
+        
+        if(endY < TFT_WIDTH && endY > startY)
+        {
+            widgets[num]->display(tft, render, 0, startY, fullUpdate);
+            startY = endY;
+        }
+    }
 }
 
-EventsPage::EventsPage() : DisplayPage() {}
-EventsPage::~EventsPage() {}
+bool DisplayPage::addWidget(WidgetBase *widget)
+{
+    if(widgetCount >= maxWidgets)
+    {
+        return false;
+    }
+    
+    widgets[widgetCount] = widget;
+    widgetCount++;
+
+    return true;
+}
+
+EventsPage::EventsPage(const CalManager *cal, uint16_t primaryColor, uint16_t bgColor) :
+DisplayPage(primaryColor, bgColor),
+calendar(cal) {}
+
+void EventsPage::display(TFT_eSPI *tft, OpenFontRender *render)
+{
+    uint8_t startY = 0;
+    uint8_t endY = startY;
+
+    tft->fillScreen(bgColor);
+
+    HeaderWidget header(TextWidget((datetimeToString(now(), true, false)).c_str(), 16, TFT_WHITE, TFT_BLACK), TFT_WHITE, TFT_BLACK);
+    // HeaderWidget header(TextWidget([](){return (datetimeToString(now(), true, false)).c_str();}, 16, TFT_WHITE, TFT_BLACK), TFT_WHITE, TFT_BLACK);
+    header.display(tft, render, 0, startY);
+    endY = startY + header.getHeight(tft, render);
+    startY = endY;
+    
+    if(calendar != nullptr)
+    {
+        const std::vector<CalendarEvent> events = calendar->getEvents();
+
+        for(uint8_t num = 0; num < events.size(); num++)
+        {
+            // TextWidget(&events[num], &CalendarEvent::getDateStr, 16, TFT_WHITE, TFT_BLACK);
+            // TextWidget(nullptr, [](){return now()}, 16, TFT_WHITE, TFT_BLACK);
+            // TextWidget([events, num](){return events[num].getDateStr();}, 16, TFT_WHITE, TFT_BLACK);
+            // EventWidget widget(TextWidget(events[num].getDateStr(), 16, TFT_WHITE, TFT_BLACK),
+            //                    TextWidget(events[num].getSummary(), 24, TFT_WHITE, TFT_BLACK),
+            //                    TextWidget(events[num].getDurationStr(), 16, TFT_WHITE, TFT_BLACK, Align::Right),
+            //                    TFT_WHITE, TFT_BLACK);
+
+            EventWidget widget(&events[num], TFT_WHITE, TFT_BLACK);
+
+            endY = startY + widget.getHeight(tft, render); // Check if fits
+            
+            if(endY < TFT_WIDTH && endY > startY)
+            {
+                widget.display(tft, render, 0, startY);
+                startY = endY;
+            }
+        }
+        
+    }
+
+}

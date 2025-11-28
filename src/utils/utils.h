@@ -26,14 +26,15 @@
  */
 time_t datetimeToSeconds(const String& datetime);
 
-inline std::string datetimeToString(time_t time, bool showYear = false, bool allDay = false)
+inline std::string datetimeToString(time_t time, bool showYear = false, bool allDay = false, bool seconds = false)
 {
     return (std::string(dayShortStr(weekday(time))) + ", " +
             (day(time) < 10 ? "0" : "") + std::to_string(day(time)) + " " + 
             std::string(monthShortStr(month(time))) + " " + 
             (showYear ? (std::to_string(year(time)) + " ") : "") + 
             (!allDay ? (hour(time) < 10 ? "0" : "") + std::to_string(hour(time)) + ":" + 
-            (minute(time) < 10 ? "0" : "") + std::to_string(minute(time)) : ""));
+            (minute(time) < 10 ? "0" : "") + std::to_string(minute(time)) : "") + 
+            (seconds ? (second(time) < 10 ? ":0" : ":") + std::to_string(second(time)) : ""));
     }
 
 inline std::string timeToString(time_t time)

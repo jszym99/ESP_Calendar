@@ -4,7 +4,7 @@
 #include <TimeLib.h>
 #include <vector>
 #include "auth_manager/auth_manager.h"
-#include "display_manager/display_manager.h"
+// #include "display_manager/display_manager.h"
 #include "calendar.h"
 #include "calendar_event.h"
 
@@ -14,7 +14,7 @@ class CalManager
 {
 private:
     std::vector<CalendarEvent> events = {};
-    std::vector<Calendar> calendarList = {};
+    std::vector<Calendar> calendars = {};
     AuthManager *auth;
     bool pendingUpdate = false;
 public:
@@ -41,11 +41,16 @@ public:
     void fetchEvents();
     std::vector<CalendarEvent> listCalendarEvents(std::string calendarId = "primary");
 
-    const std::vector<CalendarEvent> &getEvents() {return events;}
+    const std::vector<CalendarEvent> &getEvents() const {return events;}
+
+    const CalendarEvent *getEventsPtr() const {return &events[0];}
+    const uint8_t getEventCount() const {return events.size();}
 
     // Return read-only reference to calendar list for external rendering
     const std::vector<Calendar>& getCalendarList() const;
     const std::vector<Calendar*> getCalendarPtrList();
+
+    bool isPendingUpdate();
 };
 
 #endif /* CAL_MANAGER_H */

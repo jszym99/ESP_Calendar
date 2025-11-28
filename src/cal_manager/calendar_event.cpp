@@ -27,17 +27,28 @@ CalendarEvent::~CalendarEvent()
 {
 }
 
+const char * CalendarEvent::getSummary() const
+{
+    static char out[64];
+    memset(out, 0, sizeof(out)/sizeof(out[0]));
+    strcpy(out, summary.c_str());
+    
+    return out;
+}
+
 /**
  * @brief Getter event start date in string format
  * 
  * @return std::string Event date (EEE, dd/MM)
  */
-std::string CalendarEvent::getDateStr()
+const char * CalendarEvent::getDateStr() const
 {
-    std::string date = datetimeToString(startDate, false, true); 
+    static char date[64];
+    memset(date, 0, sizeof(date)/sizeof(date[0]));
+    strcpy(date, datetimeToString(startDate, false, true).c_str());
     if(now()/SECS_PER_DAY == startDate/SECS_PER_DAY)
     {
-        date += ", Today";
+        strcat(date, ", Today");
     }
     return date;
 }
@@ -47,18 +58,21 @@ std::string CalendarEvent::getDateStr()
  * 
  * @return std::string Event duration (All day/Start-End time/Start-End date and time)
  */
-std::string CalendarEvent::getDurationStr()
+const char * CalendarEvent::getDurationStr() const
 {
+    static char out[64];
+    memset(out, 0, sizeof(out)/sizeof(out[0]));
     if(isAllDay)
     {
-        return "All day";
+        strcpy(out, "All day");
     }
     else if (startDate/SECS_PER_DAY == endDate/SECS_PER_DAY) //Same day
     {
-        return (timeToString(startDate) + " - " + timeToString(endDate));
+        strcpy(out, (timeToString(startDate) + " - " + timeToString(endDate)).c_str());
     }
     else
     {
-        return (dateToString(startDate) + " - " + dateToString(endDate));
+        strcpy(out, (dateToString(startDate) + " - " + dateToString(endDate)).c_str());
     }
+    return out;
 }

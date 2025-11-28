@@ -25,38 +25,29 @@ CalManager calendar = CalManager(&oauth);
 TouchButton touchBtn = TouchButton(TOUCH_PIN);
 WebManager web;
 
-EventsPage testPage = EventsPage(16, 24, 0xFFFF, 0x0000);
-// DisplayManager::displayPage(0);
-
-void update()
+HeaderWidget header(&WiFi, TFT_WHITE, TFT_BLACK);
+DynamicEventListWidget eventList(&calendar, TFT_WHITE, TFT_BLACK);
+WidgetBase *dynWidgets[] =
 {
-    // Fetch time from NTP
-    while(!timeClient.update()) {
-        timeClient.forceUpdate();
-    }
-
-    // Update system time
-    setTime(timeClient.getEpochTime());
-    Serial.println(datetimeToString(now(), true, false).c_str());
-
-    // Get events
-    calendar.fetchEvents();
-
-    const std::vector<CalendarEvent> events = calendar.getEvents();
-
-    CalendarItem item1 = CalendarItem(TextElement{.text = events[0].getDateStr(), .fontSize = 16},
-                                      TextElement{.text = events[0].getSummary(), .fontSize = 24},
-                                      TextElement{.text = events[0].getDateStr(), .fontSize = 16},
-                                      DisplayManager::getPrimaryColor(), DisplayManager::getBackgroundColor());
-
-    DisplayManager::displayHeader();
-}
+    &header,
+    &eventList,
+};
+DisplayPage dynPage(dynWidgets, sizeof(dynWidgets)/sizeof(dynWidgets[0]), TFT_WHITE, TFT_BLACK);
+MonthWidget monthWidget(TFT_WHITE, TFT_BLACK);
+WidgetBase *monthWidgets[] =
+{
+    &header,
+    &monthWidget,
+};
+DisplayPage monthPage{monthWidgets, sizeof(monthWidgets)/sizeof(monthWidgets[0]), TFT_WHITE, TFT_BLACK};
 
 void setup()
 {
     // Initialize hardware
     DisplayManager::init();
-    DisplayManager::displayPage(DisplayManager::addPage(&testPage));
+    DisplayManager::addPage(&dynPage);
+    DisplayManager::addPage(&monthPage);
+
     touchBtn.init();
     
     // Start WiFi connection
@@ -75,8 +66,11 @@ void loop()
     static uint64_t lastUpdate = 0;
     static uint64_t lastToken = 0;
 
-    // Cycle brightness on touch
-    if(touchBtn.isClick())
+    if (touchBtn.isClick())
+    {
+        DisplayManager::nextPage();
+    }
+        else if(touchBtn.isClick(2)) // Cycle brightness on touch
     {
         uint8_t displayBrightness = DisplayManager::getBrightness();
         if(displayBrightness == maxDisplayBrightness)
@@ -99,7 +93,6 @@ void loop()
         Serial.print("Display brightness:");
         Serial.print(((DisplayManager::getBrightness()*100)/maxDisplayBrightness));
         Serial.println("%");
-
     }
 
     // Connected to WiFi
@@ -152,7 +145,21 @@ void loop()
         // Perform update
         if(lastUpdate + updateTime < millis() || lastUpdate == 0)
         {
-            update();
+                // Fetch time from NTP
+            while(!timeClient.update()) {
+                timeClient.forceUpdate();
+            }
+
+            // Update system time
+            setTime(timeClient.getEpochTime());
+            Serial.println(datetimeToString(now(), true, false).c_str());
+        
+            // Get events
+            calendar.fetchEvents();
+
+            // Update current display page
+            DisplayManager::display();
+            
             lastUpdate = millis();
         }
         // Process web server client connections

@@ -10,6 +10,7 @@ static HTTPClient http;
 CalManager::CalManager(AuthManager *authenticator)
 {
     auth = authenticator;
+    events.reserve(eventCount);
 }
 
 CalManager::~CalManager() 
@@ -74,7 +75,7 @@ void CalManager::fetchCalendarList()
         newCalendarList.push_back(Calendar(calendarId, summary, description, primary));
     }
 
-    calendarList = updateVector(calendarList, newCalendarList);
+    calendars = updateVector(calendars, newCalendarList);
 }
 
 std::vector<CalendarEvent> CalManager::listCalendarEvents(std::string calendarId)
@@ -184,7 +185,7 @@ void CalManager::fetchEvents()
 {
     std::vector<CalendarEvent> newEvents = {};
     
-    for(Calendar cal : calendarList)
+    for(Calendar cal : calendars)
     {
         if(cal.isEnabled())
         {
@@ -216,16 +217,23 @@ void CalManager::fetchEvents()
 
 const std::vector<Calendar>& CalManager::getCalendarList() const
 {
-    return calendarList;
+    return calendars;
 }
 
 const std::vector<Calendar*> CalManager::getCalendarPtrList()
 {
     std::vector<Calendar*> out;
     
-    for(Calendar &cal : calendarList)
+    for(Calendar &cal : calendars)
     {
         out.push_back(&cal);
     }
+    return out;
+}
+
+bool CalManager::isPendingUpdate()
+{
+    bool out = pendingUpdate;
+    pendingUpdate = false;
     return out;
 }
