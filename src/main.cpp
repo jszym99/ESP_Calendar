@@ -33,28 +33,28 @@ WidgetBase *dynWidgets[] =
     &eventList,
 };
 DisplayPage dynPage(dynWidgets, sizeof(dynWidgets)/sizeof(dynWidgets[0]), TFT_WHITE, TFT_BLACK);
-MonthWidget monthWidget(TFT_WHITE, TFT_BLACK);
-WidgetBase *monthWidgets[] =
-{
-    &header,
-    &monthWidget,
-};
-DisplayPage monthPage{monthWidgets, sizeof(monthWidgets)/sizeof(monthWidgets[0]), TFT_WHITE, TFT_BLACK};
+// MonthWidget monthWidget(TFT_WHITE, TFT_BLACK);
+// WidgetBase *monthWidgets[] =
+// {
+//     &header,
+//     &monthWidget,
+// };
+// DisplayPage monthPage{monthWidgets, sizeof(monthWidgets)/sizeof(monthWidgets[0]), TFT_WHITE, TFT_BLACK};
 
 void setup()
 {
+	Serial.begin(115200);
+
     // Initialize hardware
-    DisplayManager::init();
     DisplayManager::addPage(&dynPage);
-    DisplayManager::addPage(&monthPage);
+    // DisplayManager::addPage(&monthPage);
+    DisplayManager::init();
 
     touchBtn.init();
     
     // Start WiFi connection
 	WiFi.setHostname("ESP32");
 	WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-
-	Serial.begin(115200);
 
     // Initialize web manager (routes can be registered now)
     web.init(&calendar);
@@ -105,7 +105,7 @@ void loop()
 
         // Start NTP
         timeClient.begin();
-        timeClient.setTimeOffset(7200);
+        timeClient.setTimeOffset(3600);
 
         if(oauth.authenticate())
         {

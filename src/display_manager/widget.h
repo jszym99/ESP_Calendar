@@ -9,19 +9,34 @@
 
 #define STR_BUF_SIZE 64u
 
+struct WidgetConfig
+{
+    uint16_t x;
+    uint16_t y;
+    // uint16_t w;
+    // uint16_t h;
+    uint16_t fgColor = TFT_WHITE;
+    uint16_t bgColor = TFT_BLACK;
+};
+
+
 class WidgetBase
 {
 protected:
     uint16_t primaryColor;
     uint16_t bgColor;
+    static TFT_eSPI *tft;
+    static OpenFontRender *render;
+    
 public:
     WidgetBase(uint16_t fgColor, uint16_t  bgColor);
     WidgetBase() {}
     ~WidgetBase() {}
 
-    virtual void display(TFT_eSPI *tft, OpenFontRender *render, uint8_t startX, uint8_t startY, bool fullUpdate = false) = 0;
-    virtual uint8_t getHeight(TFT_eSPI *tft, OpenFontRender *render) = 0;
-    virtual uint8_t getWidth(TFT_eSPI *tft, OpenFontRender *render) = 0;
+    virtual void display(uint8_t startX, uint8_t startY, bool fullUpdate = false) = 0;
+    virtual uint8_t getHeight() = 0;
+    virtual uint8_t getWidth() = 0;
+    virtual void init(TFT_eSPI *tft, OpenFontRender *render);
 };
 
 class TextWidget : public WidgetBase
@@ -33,14 +48,14 @@ private:
     bool hasChanged = true;
 public:
     TextWidget(const char * text, uint8_t fontSize, uint16_t textColor, uint16_t bgColor, Align align = Align::Left);
-    // TextWidget(const char *(fn) (), uint8_t fontSize, uint16_t textColor, uint16_t bgColor, Align align = Align::Left);
     TextWidget() {}
     ~TextWidget() {}
 
-    uint8_t getHeight(TFT_eSPI *tft, OpenFontRender *render);
-    uint8_t getWidth(TFT_eSPI *tft, OpenFontRender *render);
-    void display(TFT_eSPI *tft, OpenFontRender *render, uint8_t startX, uint8_t startY, bool fullUpdate = false);
+    uint8_t getHeight();
+    uint8_t getWidth();
+    void display(uint8_t startX, uint8_t startY, bool fullUpdate = false);
     uint8_t getFontSize() {return fontSize;}
+    // void init(TFT_eSPI *tft, OpenFontRender *render);
 
     void update(const char *newText);
     bool getHasChanged() {return hasChanged;}
@@ -52,18 +67,16 @@ private:
     TextWidget date;
     TextWidget summary;
     TextWidget duration;
-    // const CalendarEvent *event;
 public:
-    // EventWidget(TextWidget date, TextWidget summary, TextWidget duration, uint16_t fgColor, uint16_t  bgColor);
     EventWidget(const CalendarEvent *event, uint16_t fgColor, uint16_t  bgColor);
     EventWidget() {}
     ~EventWidget() {}
 
     void update(const CalendarEvent *newEvent);
 
-    uint8_t getHeight(TFT_eSPI *tft, OpenFontRender *render);
-    uint8_t getWidth(TFT_eSPI *tft, OpenFontRender *render);
-    void display(TFT_eSPI *tft, OpenFontRender *render, uint8_t startX, uint8_t startY, bool fullUpdate = false);
+    uint8_t getHeight();
+    uint8_t getWidth();
+    void display(uint8_t startX, uint8_t startY, bool fullUpdate = false);
 };
 
 class DynamicEventListWidget : public WidgetBase
@@ -77,9 +90,9 @@ public:
     DynamicEventListWidget() {}
     ~DynamicEventListWidget() {}
 
-    uint8_t getHeight(TFT_eSPI *tft, OpenFontRender *render);
-    uint8_t getWidth(TFT_eSPI *tft, OpenFontRender *render);
-    void display(TFT_eSPI *tft, OpenFontRender *render, uint8_t startX, uint8_t startY, bool fullUpdate = false);
+    uint8_t getHeight();
+    uint8_t getWidth();
+    void display(uint8_t startX, uint8_t startY, bool fullUpdate = false);
 };
 
 class HeaderWidget : public WidgetBase
@@ -93,9 +106,9 @@ public:
     HeaderWidget() {}
     ~HeaderWidget() {}
 
-    uint8_t getHeight(TFT_eSPI *tft, OpenFontRender *render);
-    uint8_t getWidth(TFT_eSPI *tft, OpenFontRender *render);
-    void display(TFT_eSPI *tft, OpenFontRender *render, uint8_t startX, uint8_t startY, bool fullUpdate = false);
+    uint8_t getHeight();
+    uint8_t getWidth();
+    void display(uint8_t startX, uint8_t startY, bool fullUpdate = false);
 };
 
 class MonthWidget : public WidgetBase
@@ -107,9 +120,9 @@ public:
     MonthWidget() {}
     ~MonthWidget() {}
 
-    uint8_t getHeight(TFT_eSPI *tft, OpenFontRender *render);
-    uint8_t getWidth(TFT_eSPI *tft, OpenFontRender *render);
-    void display(TFT_eSPI *tft, OpenFontRender *render, uint8_t startX, uint8_t startY, bool fullUpdate = false);
+    uint8_t getHeight();
+    uint8_t getWidth();
+    void display(uint8_t startX, uint8_t startY, bool fullUpdate = false);
 };
 
 #endif /* WIDGET_H */

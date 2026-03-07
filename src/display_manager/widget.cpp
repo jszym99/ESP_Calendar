@@ -1,6 +1,9 @@
 #include "widget.h"
 #include "utils/utils.h"
 
+TFT_eSPI *WidgetBase::tft = nullptr;
+OpenFontRender *WidgetBase::render = nullptr;
+
 uint8_t convertWeekday(uint8_t day)
 {
     if(day > 1)
@@ -24,6 +27,11 @@ WidgetBase::WidgetBase(uint16_t fgColor, uint16_t  bgColor) :
 primaryColor(fgColor), 
 bgColor(bgColor) {}
 
+void WidgetBase::init(TFT_eSPI *_tft, OpenFontRender *_render)
+{
+    tft = _tft;
+    render = _render;
+}
 
 TextWidget::TextWidget(const char * _text, uint8_t fontSize, uint16_t textColor, uint16_t bgColor, Align align) : 
 fontSize(fontSize),
@@ -33,18 +41,18 @@ WidgetBase(textColor, bgColor)
     this->update(_text);
 }
 
-uint8_t TextWidget::getHeight(TFT_eSPI *tft, OpenFontRender *render)
+uint8_t TextWidget::getHeight()
 {
     return fontSize + 1;
 }
 
-uint8_t TextWidget::getWidth(TFT_eSPI *tft, OpenFontRender *render)
+uint8_t TextWidget::getWidth()
 {
     FT_BBox bbox = render->calculateBoundingBox(0, 0, fontSize, align, Layout::Horizontal, text);
 	return (bbox.xMax - bbox.xMin);
 }
 
-void TextWidget::display(TFT_eSPI *tft, OpenFontRender *render, uint8_t startX, uint8_t startY, bool fullUpdate)
+void TextWidget::display(uint8_t startX, uint8_t startY, bool fullUpdate)
 {
     if(!fullUpdate && !hasChanged)
     {
@@ -127,12 +135,12 @@ WidgetBase(fgColor, bgColor)
     }
 }
 
-uint8_t EventWidget::getHeight(TFT_eSPI *tft, OpenFontRender *render)
+uint8_t EventWidget::getHeight()
 {
-    return date.getHeight(tft, render) + 1.5 * summary.getHeight(tft, render) + duration.getHeight(tft, render);
+    return date.getHeight() + 1.5 * summary.getHeight() + duration.getHeight();
 }
 
-uint8_t EventWidget::getWidth(TFT_eSPI *tft, OpenFontRender *render)
+uint8_t EventWidget::getWidth()
 {
     return TFT_WIDTH;
 }
@@ -144,7 +152,7 @@ void EventWidget::update(const CalendarEvent *newEvent)
     duration.update(newEvent->getDurationStr());
 }
 
-void EventWidget::display(TFT_eSPI *tft, OpenFontRender *render, uint8_t startX, uint8_t startY, bool fullUpdate)
+void EventWidget::display(uint8_t startX, uint8_t startY, bool fullUpdate)
 {
     
     uint8_t cellHeight = TFT_HEIGHT + radius - (startY + 0.75 * date.getFontSize());
@@ -152,12 +160,12 @@ void EventWidget::display(TFT_eSPI *tft, OpenFontRender *render, uint8_t startX,
     // Clear previous text
     if(date.getHasChanged())
     {
-        tft->fillRect(startX + xTextMargin, startY + date.getFontSize()/3 - 1, TFT_WIDTH - 2 * xTextMargin, date.getHeight(tft, render), bgColor);
+        tft->fillRect(startX + xTextMargin, startY + date.getFontSize()/3 - 1, TFT_WIDTH - 2 * xTextMargin, date.getHeight(), bgColor);
     }
     
     if(fullUpdate)
     {
-        tft->fillRect(startX + xTextMargin, startY, getWidth(tft, render) - 2 * xTextMargin, getHeight(tft, render), bgColor);
+        tft->fillRect(startX + xTextMargin, startY, getWidth() - 2 * xTextMargin, getHeight(), bgColor);
     }
 
     if(date.getHasChanged() || fullUpdate)
@@ -165,43 +173,29 @@ void EventWidget::display(TFT_eSPI *tft, OpenFontRender *render, uint8_t startX,
         // Draw frame
         tft->drawSmoothRoundRect(xMargin, startY + 0.75 * date.getFontSize(), radius, radius+lineWidth-1, cellWidth, cellHeight, primaryColor, bgColor);
     }
-    // tft->fillRect(xTextMargin + date.fontSize - xMargin, startY + 0.25 * date.fontSize + 1, render->getTextWidth(date.text.c_str()) + 2 * xMargin, render->getTextHeight(date.text.c_str()), bgColor);
 
-    // render->setBackgroundFillMethod(BgFillMethod::Block);
-    // render->setFontSize(date.fontSize);
-    // render->drawString(date.text.c_str(), xTextMargin + date.fontSize, startY, primaryColor, bgColor);
-
-    date.display(tft, render, xTextMargin + date.getFontSize(), startY, fullUpdate);
+    date.display(xTextMargin + date.getFontSize(), startY, fullUpdate);
 
     startY += date.getFontSize();
 
     // Clear previous text
-    // if(summary.getHasChanged())
-    // {
-    //     // tft->fillRect(startX + xTextMargin, startY, getWidth(tft, render) - 2 * xTextMargin, summary.getHeight(tft, render), bgColor);
-    //     tft->drawRect(startX + xTextMargin, startY + (summary.getHeight(tft, render)/3), getWidth(tft, render) - 2 * xTextMargin, summary.getHeight(tft, render) - 1, primaryColor);
-    // }
+    if(summary.getHasChanged())
+    {
+        tft->fillRect(startX + xTextMargin, startY + summary.getFontSize()/3 - 1, TFT_WIDTH - 2 * xTextMargin, summary.getHeight(), bgColor);
+    }
 
-    summary.display(tft, render, xTextMargin, startY, fullUpdate);
-
-    // render->setFontSize(summary.fontSize);
-    // render->drawString(summary.text.c_str(), xTextMargin, startY, primaryColor, bgColor);
+    summary.display(xTextMargin, startY, fullUpdate);
 
     startY += 1.25 * summary.getFontSize();
 
 
-    // // Clear previous text
-    // if(duration.getHasChanged())
-    // {
-    //     // tft->fillRect(startX + xTextMargin, startY + 1, getWidth(tft, render) - 2 * xTextMargin, duration.getHeight(tft, render), bgColor);
-    //     tft->drawRect(startX + xTextMargin, startY + (duration.getHeight(tft, render)/4), getWidth(tft, render) - 2 * xTextMargin, duration.getHeight(tft, render) - 1, primaryColor);
-    // }
+    // Clear previous text
+    if(duration.getHasChanged())
+    {
+        tft->fillRect(startX + xTextMargin, startY + duration.getFontSize()/3 - 1, TFT_WIDTH - 2 * xTextMargin, duration.getHeight(), bgColor);
+    }
 
-    duration.display(tft, render, TFT_WIDTH - (xTextMargin + duration.getFontSize()), startY, fullUpdate);
-
-
-    // render->setFontSize(duration.fontSize);
-    // render->rdrawString(duration.text.c_str(), TFT_WIDTH - (xTextMargin+duration.fontSize), startY, primaryColor, bgColor);
+    duration.display(TFT_WIDTH - (xTextMargin + duration.getFontSize()), startY, fullUpdate);
 }
 
 DynamicEventListWidget::DynamicEventListWidget(const CalManager *cal, uint16_t fgColor, uint16_t  bgColor) :
@@ -218,18 +212,18 @@ calendar(cal), WidgetBase(fgColor, bgColor)
     }
 }
 
-uint8_t DynamicEventListWidget::getHeight(TFT_eSPI *tft, OpenFontRender *render)
+uint8_t DynamicEventListWidget::getHeight()
 {
     widgetCount = calendar->getEventCount();
-    return widgetCount * widgets[0].getHeight(tft, render);
+    return widgetCount * widgets[0].getHeight();
 }
 
-uint8_t DynamicEventListWidget::getWidth(TFT_eSPI *tft, OpenFontRender *render)
+uint8_t DynamicEventListWidget::getWidth()
 {
     return TFT_WIDTH;
 }
 
-void DynamicEventListWidget::display(TFT_eSPI *tft, OpenFontRender *render, uint8_t startX, uint8_t startY, bool fullUpdate)
+void DynamicEventListWidget::display(uint8_t startX, uint8_t startY, bool fullUpdate)
 {
     uint8_t endY;
     
@@ -242,7 +236,7 @@ void DynamicEventListWidget::display(TFT_eSPI *tft, OpenFontRender *render, uint
 
         if(fullUpdate)
         {
-            tft->fillRect(startX, startY, getWidth(tft, render), getHeight(tft, render), bgColor); // Erase old list
+            tft->fillRect(startX, startY, getWidth(), getHeight(), bgColor); // Erase old list
         }
 
         widgetCount = calendar->getEventCount();
@@ -255,11 +249,11 @@ void DynamicEventListWidget::display(TFT_eSPI *tft, OpenFontRender *render, uint
 
         for(uint8_t num = 0; num < widgetCount; num++)
         {
-            endY = startY + widgets[num].getHeight(tft, render);
+            endY = startY + widgets[num].getHeight();
     
             if(endY < TFT_WIDTH && endY > startY) // Check if will fit
             {
-                widgets[num].display(tft, render, 0, startY, fullUpdate);
+                widgets[num].display(0, startY, fullUpdate);
                 startY = endY;
             }
         }
@@ -278,27 +272,27 @@ WidgetBase(fgColor, bgColor)
     text = TextWidget((datetimeToString(now(), true, false, true)).c_str(), 16, fgColor, bgColor);
 }
 
-uint8_t HeaderWidget::getHeight(TFT_eSPI *tft, OpenFontRender *render)
+uint8_t HeaderWidget::getHeight()
 {
-    // return text.getHeight(tft, render);
+    // return text.getHeight();
     return 24;
 }
 
-uint8_t HeaderWidget::getWidth(TFT_eSPI *tft, OpenFontRender *render)
+uint8_t HeaderWidget::getWidth()
 {
     return TFT_WIDTH;
 }
 
-void HeaderWidget::display(TFT_eSPI *tft, OpenFontRender *render, uint8_t startX, uint8_t startY, bool fullUpdate)
+void HeaderWidget::display(uint8_t startX, uint8_t startY, bool fullUpdate)
 {
     text.update((datetimeToString(now(), true, false, true)).c_str());
 
     if(fullUpdate || text.getHasChanged())
     {
-        tft->fillRect(startX + xTextMargin, startY + text.getFontSize()/3 - 1, TFT_WIDTH - 2 * xTextMargin, text.getHeight(tft, render), bgColor);
+        tft->fillRect(startX + xTextMargin, startY + text.getFontSize()/3 - 1, TFT_WIDTH - 2 * xTextMargin, text.getHeight(), bgColor);
     }
 
-    text.display(tft, render, xTextMargin, startY, fullUpdate);
+    text.display(xTextMargin, startY, fullUpdate);
 
     if(fullUpdate)
     {
@@ -319,18 +313,23 @@ void HeaderWidget::display(TFT_eSPI *tft, OpenFontRender *render, uint8_t startX
 MonthWidget::MonthWidget(uint16_t fgColor, uint16_t bgColor) :
 WidgetBase(fgColor, bgColor) {} 
 
-uint8_t MonthWidget::getHeight(TFT_eSPI *tft, OpenFontRender *render)
+uint8_t MonthWidget::getHeight()
 {
     return 7*24;
 }
 
-uint8_t MonthWidget::getWidth(TFT_eSPI *tft, OpenFontRender *render)
+uint8_t MonthWidget::getWidth()
 {
     return TFT_WIDTH;
 }
 
-void MonthWidget::display(TFT_eSPI *tft, OpenFontRender *render, uint8_t startX, uint8_t startY, bool fullUpdate)
+void MonthWidget::display(uint8_t startX, uint8_t startY, bool fullUpdate)
 {
+    if(fullUpdate)
+    {
+        tft->fillRect(startX, startY, getWidth(), getHeight(), bgColor); // Erase old widget
+    }
+
     time_t time = now();
     const uint8_t colW = 29;
     const uint8_t rowH = 29;

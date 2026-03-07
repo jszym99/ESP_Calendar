@@ -23,28 +23,29 @@ public:
     DisplayPage() {}
     ~DisplayPage() {}
 
-    virtual void display(TFT_eSPI *tft, OpenFontRender *render, bool fullUpdate = false);
+    virtual void display(bool fullUpdate = false);
     bool addWidget(WidgetBase *widget);
     void clear() {widgetCount = 0;}
     uint8_t getItemCount() {return widgetCount;}
+    void init(TFT_eSPI *tft, OpenFontRender *render);
 };
 
-class EventsPage : public DisplayPage
-{
-private:
-    const CalManager *calendar = nullptr;
-public:
-    // EventsPage(uint8_t smallFont, uint8_t largeFont, uint16_t primaryColor, uint16_t bgColor);
-    // EventsPage(WidgetBase *(*widgets), uint8_t widgetCount, uint8_t smallFont, uint8_t largeFont, uint16_t primaryColor, uint16_t bgColor);
+// class EventsPage : public DisplayPage
+// {
+// private:
+//     const CalManager *calendar = nullptr;
+// public:
+//     // EventsPage(uint8_t smallFont, uint8_t largeFont, uint16_t primaryColor, uint16_t bgColor);
+//     // EventsPage(WidgetBase *(*widgets), uint8_t widgetCount, uint8_t smallFont, uint8_t largeFont, uint16_t primaryColor, uint16_t bgColor);
     
-    EventsPage(const CalManager *cal, uint16_t primaryColor, uint16_t bgColor);
-    EventsPage() {}
-    ~EventsPage() {}
+//     EventsPage(const CalManager *cal, uint16_t primaryColor, uint16_t bgColor);
+//     EventsPage() {}
+//     ~EventsPage() {}
 
-    void display(TFT_eSPI *tft, OpenFontRender *render);
-    // void addWidget(WidgetBase *widget) {DisplayPage::addWidget(widget);}
-    // void clear() {DisplayPage::clear();}
-};
+//     void display(TFT_eSPI *tft, OpenFontRender *render);
+//     // void addWidget(WidgetBase *widget) {DisplayPage::addWidget(widget);}
+//     // void clear() {DisplayPage::clear();}
+// };
 
 
 

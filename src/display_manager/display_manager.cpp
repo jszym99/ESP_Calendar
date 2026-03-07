@@ -35,25 +35,13 @@ void DisplayManager::init()
         return;
     }
     render.setDrawer(tft); // Set drawer object
+
+    Serial.println("Initializing page");
+    for(uint8_t num = 0; num < pageCount; num++)
+    {
+        pages[num]->init(&tft, &render);
+    }
 }
-
-// void DisplayManager::displayHeader()
-// {
-//     // Clear header space
-//     tft.fillRect(0, 0, TFT_WIDTH, 24, backgroundColor);
-
-//     // Print last update date and time
-//     // render.setFontSize(smallFont);
-//     // render.setCursor(0,0);
-//     render.setFontColor(primaryColor, backgroundColor);
-//     render.drawString((datetimeToString(now(), true, false)).c_str(), render.getCursorX(), render.getCursorY(), render.getFontColor(), render.getBackgroundColor());
-
-//     // Draw WiFi symbol
-//     tft.drawSmoothArc(240-16, 12, 10, 9, 135, 225, TFT_BLUE, backgroundColor);
-//     tft.drawSmoothArc(240-16, 12, 6, 5, 135, 225, TFT_BLUE, backgroundColor);
-//     tft.fillSmoothCircle(240-16, 12, 1, TFT_BLUE, backgroundColor);
-//     tft.drawLine(0, 20, TFT_WIDTH, 20, primaryColor);
-// }
 
 void DisplayManager::setBrightness(uint8_t value)
 {
@@ -78,7 +66,8 @@ void DisplayManager::displayPage(uint8_t index)
 {
     if(index < pageCount)
     {
-        pages[index]->display(&tft, &render, true);
+        tft.fillScreen(backgroundColor);
+        pages[index]->display(true);
     }
 }
 
@@ -124,5 +113,5 @@ void DisplayManager::setPage(uint8_t pageNum)
 
 void DisplayManager::display()
 {
-    pages[currentPage]->display(&tft, &render);
+    pages[currentPage]->display();
 }
