@@ -8,7 +8,8 @@
 #include "calendar.h"
 #include "calendar_event.h"
 
-constexpr uint8_t eventCount = 3;
+constexpr uint8_t eventCount = 3u;
+constexpr uint8_t maxCal = 10u; // Max number of calendars (10 should be big enough)
 
 class CalManager
 {

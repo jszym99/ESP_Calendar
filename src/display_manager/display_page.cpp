@@ -36,7 +36,7 @@ void DisplayPage::display(bool fullUpdate)
         
         if(endY < TFT_WIDTH && endY > startY)
         {
-            widgets[num]->display(0, startY, fullUpdate);
+            widgets[num]->draw(fullUpdate);
             startY = endY;
         }
     }

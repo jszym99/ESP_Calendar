@@ -49,23 +49,22 @@ void CalManager::fetchCalendarList()
     deserializeJson(response, responseString);
 
     // Calendar calendar = {};
-    std::string calendarId, summary, description;
+    char calendarId[BUFSIZ];
+    char summary[BUFSIZ];
+    char description[BUFSIZ];
     bool primary;
     std::vector<Calendar> newCalendarList = {};
     
     for(int i = 0; i < response["items"].size(); i++)
     {
-        calendarId = "";
-        summary = "";
-        description = "";
         primary = false;
-        // calendar = {};
-        calendarId = response["items"][i]["id"].as<std::string>();
 
-        summary = response["items"][i]["summary"].as<std::string>();
-        if(response["items"][i]["description"].is<std::string>())
+        strcpy(calendarId, response["items"][i]["id"].as<const char *>());
+
+        strcpy(summary, response["items"][i]["summary"].as<const char *>());
+        if(response["items"][i]["description"].is<const char *>())
         {
-            description = response["items"][i]["description"].as<std::string>();
+            strcpy(description, response["items"][i]["description"].as<const char *>());
         }
         if(response["items"][i]["primary"].is<bool>() && response["items"][i]["primary"].as<bool>() == true)
         {
@@ -84,7 +83,7 @@ std::vector<CalendarEvent> CalManager::listCalendarEvents(std::string calendarId
     String responseString;
     std::vector<CalendarEvent> newEvents = {};
     
-    const std::string fields = "fields=items(id,summary,start,end)";
+    const char fields[] = "fields=items(id,summary,start,end)";
 
     // Convert current unix time to ISO 8601
     time_t currentTime = now() - 7200; // Compensate time zone
@@ -132,41 +131,46 @@ std::vector<CalendarEvent> CalManager::listCalendarEvents(std::string calendarId
     // Check for keys and save events info
     for(int i = 0; i < response["items"].size(); i++)
     {
-        std::string eventId, summary;
+        // std::string eventId, summary;
+        char eventId[BUFSIZ];
+        char summary[BUFSIZ];
+
         time_t start, end;
         bool allDay;
 
-        if(response["items"][i]["id"].is<std::string>())
+        if(response["items"][i]["id"].is<const char *>())
         {
-            eventId = response["items"][i]["id"].as<std::string>();
+            // eventId = response["items"][i]["id"].as<std::string>();
+            strcpy(eventId, response["items"][i]["id"].as<const char *>());
         }
 
-        if(response["items"][i]["summary"].is<std::string>())
+        if(response["items"][i]["summary"].is<const char *>())
         {
-            summary = response["items"][i]["summary"].as<std::string>();
+            // summary = response["items"][i]["summary"].as<std::string>();
+            strcpy(summary, response["items"][i]["summary"].as<const char *>());
         }
 
         // Save event start date (and time)
-        if(response["items"][i]["start"]["date"].is<String>())
+        if(response["items"][i]["start"]["date"].is<const char *>())
         {
-            start = datetimeToSeconds(response["items"][i]["start"]["date"].as<String>());
+            start = datetimeToSeconds(response["items"][i]["start"]["date"].as<const char *>());
             allDay = true;
         }
-        else if (response["items"][i]["start"]["dateTime"].is<String>())
+        else if (response["items"][i]["start"]["dateTime"].is<const char *>())
         {
-            start = datetimeToSeconds(response["items"][i]["start"]["dateTime"].as<String>());
+            start = datetimeToSeconds(response["items"][i]["start"]["dateTime"].as<const char *>());
             allDay = false;
         }
 
         // Save event end date (and time)
-        if(response["items"][i]["end"]["date"].is<String>())
+        if(response["items"][i]["end"]["date"].is<const char *>())
         {
-            end = datetimeToSeconds(response["items"][i]["end"]["date"].as<String>());
+            end = datetimeToSeconds(response["items"][i]["end"]["date"].as<const char *>());
             allDay = true;
         }
-        else if (response["items"][i]["end"]["dateTime"].is<String>())
+        else if (response["items"][i]["end"]["dateTime"].is<const char *>())
         {
-            end = datetimeToSeconds(response["items"][i]["end"]["dateTime"].as<String>());
+            end = datetimeToSeconds(response["items"][i]["end"]["dateTime"].as<const char *>());
             allDay = false;
         }
 

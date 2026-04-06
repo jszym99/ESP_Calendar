@@ -14,12 +14,6 @@ DisplayPage *DisplayManager::pages[maxPages];
 uint8_t DisplayManager::pageCount;
 uint8_t DisplayManager::currentPage = 0;
 
-// Constants
-constexpr uint8_t xMargin = 4;
-constexpr uint8_t xTextMargin = xMargin + 8;
-constexpr uint8_t cellWidth = TFT_WIDTH-2*xMargin-1;
-constexpr uint8_t tftHeight = 230; //TFT_HEIGHT;
-
 void DisplayManager::init()
 {
     // Init tft and clear display

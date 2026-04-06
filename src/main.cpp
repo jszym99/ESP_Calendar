@@ -25,8 +25,8 @@ CalManager calendar = CalManager(&oauth);
 TouchButton touchBtn = TouchButton(TOUCH_PIN);
 WebManager web;
 
-HeaderWidget header(&WiFi, TFT_WHITE, TFT_BLACK);
-DynamicEventListWidget eventList(&calendar, TFT_WHITE, TFT_BLACK);
+HeaderWidget header(WidgetConfig{0,0, TFT_WIDTH, 24,TFT_WHITE,TFT_BLACK}, &WiFi);
+DynamicEventListWidget eventList(WidgetConfig{0,header.getHeight(), TFT_WIDTH, TFT_HEIGHT,TFT_WHITE,TFT_BLACK}, &calendar);
 WidgetBase *dynWidgets[] =
 {
     &header,
@@ -152,10 +152,14 @@ void loop()
 
             // Update system time
             setTime(timeClient.getEpochTime());
-            Serial.println(datetimeToString(now(), true, false).c_str());
+            // Serial.println(datetimeToString(now(), true, false).c_str());
+            Serial.println(datetimeStr(now()));
         
             // Get events
             calendar.fetchEvents();
+            
+            // Update events
+            eventList.update();
 
             // Update current display page
             DisplayManager::display();
