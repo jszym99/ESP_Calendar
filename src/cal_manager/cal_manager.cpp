@@ -10,7 +10,7 @@ static HTTPClient http;
 CalManager::CalManager(AuthManager *authenticator)
 {
     auth = authenticator;
-    events.reserve(eventCount);
+    events.reserve(maxEventCount);
 }
 
 CalManager::~CalManager() 
@@ -49,11 +49,19 @@ void CalManager::fetchCalendarList()
     deserializeJson(response, responseString);
 
     // Calendar calendar = {};
-    char calendarId[BUFSIZ];
-    char summary[BUFSIZ];
-    char description[BUFSIZ];
+    static char calendarId[BUFSIZ];
+    static char summary[BUFSIZ];
+    static char description[BUFSIZ];
+    memset(calendarId, 0, sizeof(calendarId)/sizeof(calendarId[0]));
+    memset(summary, 0, sizeof(summary)/sizeof(summary[0]));
+    memset(description, 0, sizeof(description)/sizeof(description[0]));
+
+
     bool primary;
-    std::vector<Calendar> newCalendarList = {};
+    // std::vector<Calendar> newCalendarVector = {};
+    // Calendar newCalendar;
+    static Calendar newCalendarList[maxCalendarCount];
+    uint8_t newCalendarListSize{0};
     
     for(int i = 0; i < response["items"].size(); i++)
     {
@@ -71,10 +79,46 @@ void CalManager::fetchCalendarList()
             primary = true;
         }
 
-        newCalendarList.push_back(Calendar(calendarId, summary, description, primary));
+        // newCalendarVector.push_back(Calendar(calendarId, summary, description, primary));
+        if(newCalendarListSize < maxCalendarCount)
+        {
+            newCalendarList[newCalendarListSize++] = Calendar(calendarId, summary, description, primary);
+        }
     }
 
-    calendars = updateVector(calendars, newCalendarList);
+    // Synchronize calendar enabled/disabled flag
+    for(uint8_t oldCalNum; oldCalNum < calendarListSize; oldCalNum++)
+    {
+        // Check if calendar is in new list
+        for(uint8_t newCalNum; newCalNum < newCalendarListSize; newCalNum++)
+        {
+            // If present update enable/disable flag
+            if(calendarList[oldCalNum] == newCalendarList[newCalNum])
+            {
+                if(calendarList[oldCalNum].isEnabled())
+                {
+                    newCalendarList[newCalNum].enable();
+                }
+                else
+                {
+                    newCalendarList[newCalNum].disable();
+                }
+
+                break; // Calendar id's cannot repeat, no need to keep going
+            }
+        }
+    }
+
+    // Update list length
+    calendarListSize = newCalendarListSize;
+    
+    // Copy new calendar data to the object list
+    for(uint8_t newCalNum; newCalNum < newCalendarListSize; newCalNum++)
+    {
+        calendarList[newCalNum] = newCalendarList[newCalNum];
+    }
+
+    // calendars = updateVector(calendars, newCalendarVector);
 }
 
 std::vector<CalendarEvent> CalManager::listCalendarEvents(std::string calendarId)
@@ -100,11 +144,11 @@ std::vector<CalendarEvent> CalManager::listCalendarEvents(std::string calendarId
 
     // Construct URL
     const std::string URL = "https://www.googleapis.com/calendar/v3/calendars/" +
-        calendarId + "/events?maxResults=" + std::to_string(eventCount) +
+        calendarId + "/events?maxResults=" + std::to_string(maxEventCount) +
         "&orderBy=startTime&singleEvents=true&timeMin=" + buf +
         "&" + fields;
 
-    // const std::string params = "/events?maxResults=" + std::to_string(eventCount)+ ;
+    // const std::string params = "/events?maxResults=" + std::to_string(maxEventCount)+ ;
 
 	http.begin(URL.c_str());
     http.addHeader("Authorization",  "Bearer " + String(auth->getAccessToken().c_str()));
@@ -132,8 +176,11 @@ std::vector<CalendarEvent> CalManager::listCalendarEvents(std::string calendarId
     for(int i = 0; i < response["items"].size(); i++)
     {
         // std::string eventId, summary;
-        char eventId[BUFSIZ];
-        char summary[BUFSIZ];
+        static char eventId[BUFSIZ];
+        static char summary[BUFSIZ];
+
+        memset(eventId, 0, sizeof(eventId)/sizeof(eventId[0]));
+        memset(summary, 0, sizeof(summary)/sizeof(summary[0]));
 
         time_t start, end;
         bool allDay;
@@ -189,12 +236,14 @@ void CalManager::fetchEvents()
 {
     std::vector<CalendarEvent> newEvents = {};
     
-    for(Calendar cal : calendars)
+    // Fetch events for every enabled calendar
+    for(uint8_t calNum = 0; calNum < calendarListSize; calNum++)
     {
-        if(cal.isEnabled())
+        if(calendarList[calNum].isEnabled())
         {
-            std::vector<CalendarEvent> calendarEvents = listCalendarEvents(cal.getId());
+            std::vector<CalendarEvent> calendarEvents = listCalendarEvents(calendarList[calNum].getId());
 
+            // Check if calendar has any events
             if(!calendarEvents.empty())
             {
                 newEvents.insert(newEvents.end(), calendarEvents.begin(), calendarEvents.end());
@@ -202,9 +251,9 @@ void CalManager::fetchEvents()
                 std::sort(newEvents.begin(), newEvents.end());
     
                 // Remove unneeded events
-                if(newEvents.size() > eventCount)
+                if(newEvents.size() > maxEventCount)
                 {
-                    newEvents.erase(newEvents.begin() + eventCount, newEvents.end());
+                    newEvents.erase(newEvents.begin() + maxEventCount, newEvents.end());
                 }
             }
 

@@ -6,13 +6,14 @@
 class CalendarEvent
 {
 private:
-    std::string eventId;
-    std::string summary;
+    char eventId[BUFSIZ];
+    char summary[BUFSIZ];
     time_t startDate;
     time_t endDate;
     bool isAllDay;
 public:
-    CalendarEvent(std::string id, std::string sum, time_t start, time_t end, bool allDay);
+    CalendarEvent();
+    CalendarEvent(const char *id, const char *sum, time_t start, time_t end, bool allDay);
     ~CalendarEvent();
 
     const char * getSummary() const;

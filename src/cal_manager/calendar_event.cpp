@@ -10,13 +10,17 @@
  * @param end       End time/date
  * @param allDay    Is event all day
  */
-CalendarEvent::CalendarEvent(std::string id, std::string sum, time_t start, time_t end, bool allDay)
+CalendarEvent::CalendarEvent() : eventId(), summary(), startDate(0), endDate(0), isAllDay(false)
 {
-    eventId = id;
-    summary = sum;
-    startDate = start;
-    endDate = end;
-    isAllDay = allDay;
+}
+
+CalendarEvent::CalendarEvent(const char *id, const char *sum, time_t start, time_t end, bool allDay) :
+startDate(start),
+endDate(end),
+isAllDay(allDay)
+{
+    strcpy(eventId, id);
+    strcpy(summary, sum);
 }
 
 /**
@@ -31,7 +35,7 @@ const char * CalendarEvent::getSummary() const
 {
     static char out[BUFSIZ];
     memset(out, 0, sizeof(out)/sizeof(out[0]));
-    strcpy(out, summary.c_str());
+    strcpy(out, summary);
     
     return out;
 }
@@ -39,7 +43,7 @@ const char * CalendarEvent::getSummary() const
 /**
  * @brief Getter event start date in string format
  * 
- * @return std::string Event date (EEE, dd/MM)
+ * @return const char * Event date (EEE, dd/MM)
  */
 const char * CalendarEvent::getDateStr() const
 {
@@ -60,7 +64,7 @@ const char * CalendarEvent::getDateStr() const
 /**
  * @brief Getter for event duration in string format
  * 
- * @return std::string Event duration (All day/Start-End time/Start-End date and time)
+ * @return const char * Event duration (All day/Start-End time/Start-End date and time)
  */
 const char * CalendarEvent::getDurationStr() const
 {

@@ -285,7 +285,7 @@ WidgetBase(_config)
     if(calendar != nullptr)
     {
         // memcpy(events, calendar->getEventsPtr(), calendar->getEventCount()*sizeof(*calendar->getEventsPtr()));
-        for(uint8_t num = 0; num < eventCount; num++)
+        for(uint8_t num = 0; num < maxEventCount; num++)
         {
             events[num] = nullptr;//&calendar->getEventsPtr()[num];
             uint16_t height = 2 * smallFont + 1.5 * largeFont;
@@ -310,7 +310,7 @@ void DynamicEventListWidget::update()
 {
         const std::vector<CalendarEvent> events = calendar->getEvents();
 
-        for(uint8_t num = 0; num < eventCount; num++)
+        for(uint8_t num = 0; num < maxEventCount; num++)
         {
             widgets[num].update(&events[num]);
         }

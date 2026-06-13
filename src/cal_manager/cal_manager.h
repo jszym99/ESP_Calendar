@@ -8,14 +8,17 @@
 #include "calendar.h"
 #include "calendar_event.h"
 
-constexpr uint8_t eventCount = 3u;
-constexpr uint8_t maxCal = 10u; // Max number of calendars (10 should be big enough)
+constexpr uint8_t maxEventCount{3u};
+constexpr uint8_t maxCalendarCount{10u}; // Max number of calendars (10 should be big enough)
 
 class CalManager
 {
 private:
     std::vector<CalendarEvent> events = {};
     std::vector<Calendar> calendars = {};
+    Calendar calendarList[maxCalendarCount];
+    uint8_t calendarListSize = 0;
+    // CalendarEvent eventList[maxEventCount];
     AuthManager *auth;
     bool pendingUpdate = false;
 public:

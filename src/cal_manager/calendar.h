@@ -6,15 +6,16 @@
 class Calendar
 {
 private:
-    std::string calendarId;
-    std::string summary;
-    std::string description;
+    char calendarId[BUFSIZ];
+    char summary[BUFSIZ];
+    char description[BUFSIZ];
     bool enabled = true;
     bool primary = false;
 public:
-    Calendar(std::string calId, std::string sum, std::string desc, bool en, bool prim);
-    Calendar(std::string calId, std::string sum, std::string desc, bool prim);
-    Calendar(std::string calId, std::string sum, std::string desc);
+    Calendar(const char *calId, const char *sum, const char *desc, bool en, bool prim);
+    Calendar(const char *calId, const char *sum, const char *desc, bool prim);
+    Calendar(const char *calId, const char *sum, const char *desc);
+    Calendar();
     ~Calendar();
 
     void enable() {enabled = true;}
@@ -28,7 +29,8 @@ public:
 
     bool operator==(const Calendar& other) const
     {
-        return calendarId == other.calendarId;
+        // return calendarId == other.calendarId;
+        return strcmp(calendarId, other.calendarId);
     }
 };
 
