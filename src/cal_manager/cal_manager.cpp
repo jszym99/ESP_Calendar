@@ -3,14 +3,137 @@
 #include <ArduinoJson.h>
 #include <NTPClient.h>
 #include <WiFiUdp.h>
+#include <WiFiClient.h>
+#include <StreamUtils.h>
 #include "utils/utils.h"
 
+static WiFiClientSecure client;
 static HTTPClient http;
+
+/**
+ * @brief Merges and sorts (ascending) two lists of the same size and type
+ * 
+ * @param list Input/output list
+ * @param newList Input list
+ * @param listLen List length
+ * @param newListLen New list length
+ * @return uint8_t 
+ */
+uint8_t mergeAndSort(CalendarEvent *list, const CalendarEvent *newList, uint8_t listLen, uint8_t newListLen)
+{
+    CalendarEvent out[maxEventCount];
+
+    uint8_t l1 = 0;
+    uint8_t l2 = 0;
+    uint8_t i = 0;
+
+    while((i < maxEventCount) && (i < (listLen + newListLen)))
+    {
+        // No more items in the first list
+        if(l1 >= listLen)
+        {
+            out[i] = newList[l2];
+            l2++;
+        }
+        // No more items in the second list
+        else if(l2 >= newListLen)
+        {
+            out[i] = list[l1];
+            l1++;
+        }
+        // Pick first item from either list
+        else if(list[l1] < newList[l2])
+        {
+            out[i] = list[l1];
+            l1++;
+        }
+        else
+        {
+            out[i] = newList[l2];
+            l2++;
+        }
+        i++;
+
+        // Serial.println(out[i].getSummary());
+    }
+
+    memcpy(list, out, i * sizeof(CalendarEvent));
+
+    return i;
+}
+
+DeserializationError fetchJson(const char *url, JsonDocument &doc, const char *bearerToken = nullptr)
+{
+    // WiFiClientSecure client;
+    // HTTPClient http;
+
+    client.setInsecure();
+
+    // Tell HTTPClient to collect the Transfer-Encoding header
+    const char* keys[] = {"Transfer-Encoding"};
+    http.collectHeaders(keys, 1);
+
+    // Initialize the connection
+    if (!http.begin(client, url)) {
+        Serial.println("Error: Failed to initialize HTTP connection.");
+        return DeserializationError::EmptyInput;
+    }
+
+    // Inject the Auth Header (if a token was provided)
+    if (bearerToken != nullptr) {
+        char authHeader[512];
+        snprintf(authHeader, sizeof(authHeader), "Bearer %s", bearerToken);
+        http.addHeader("Authorization", authHeader);
+    }
+    
+    // Execute the request
+    int httpCode = http.GET();
+
+    // Handle HTTP errors
+    if (httpCode != HTTP_CODE_OK) { 
+        Serial.printf("HTTP GET Error Code: %d\n", httpCode);
+        
+        if (httpCode > 0) {
+        Serial.println("Server Response: " + http.getString()); 
+        }
+        
+        http.end();
+        return DeserializationError::EmptyInput; 
+    }
+
+    // Get the raw and the decoded stream
+    Stream& rawStream = http.getStream();
+    
+    // Check if the server used chunked encoding
+    bool isChunked = http.header("Transfer-Encoding").equalsIgnoreCase("chunked");
+    
+    DeserializationError error;
+
+    // Choose the right stream depending on the Transfer-Encoding header
+    if (isChunked) {
+        // Strip the hex chunks
+        ChunkDecodingStream decodedStream(rawStream);
+        // Wiretap the clean stream
+        ReadLoggingStream loggingStream(decodedStream, Serial);
+        // Parse the wiretap
+        error = deserializeJson(doc, loggingStream);
+    } else {
+        // Wiretap the raw stream directly
+        ReadLoggingStream loggingStream(rawStream, Serial);
+        // Parse the wiretap
+        error = deserializeJson(doc, loggingStream);
+    }
+
+    // Close the connection (and free socket memory)
+    http.end();
+
+    return error;
+}
+
 
 CalManager::CalManager(AuthManager *authenticator)
 {
     auth = authenticator;
-    events.reserve(maxEventCount);
 }
 
 CalManager::~CalManager() 
@@ -20,33 +143,14 @@ CalManager::~CalManager()
 void CalManager::fetchCalendarList()
 {
     JsonDocument response;
-    String responseString;
+    // String responseString;
 
-    const char fields[] = "fields=items(id,summary,description,primary)";
+    // const char fields[] = "fields=items(id,summary,description,primary)";
 
-    // Construct URL
+    // // Construct URL
     const char URL[] = "https://www.googleapis.com/calendar/v3/users/me/calendarList?fields=items(id,summary,description,primary)";
- 
-    http.begin(URL);
-    http.addHeader("Authorization",  "Bearer " + String(auth->getAccessToken().c_str()));
 
-    // Get response and code
-    int httpResponseCode = http.GET();
-    responseString = http.getString();
-    
-    printHttpResp(httpResponseCode, responseString);
-    
-    // TODO: Fallback on request error
-    if(httpResponseCode != HTTP_CODE_OK)
-    {
-        http.end();
-        return;
-    }
-
-
-    http.end();
-
-    deserializeJson(response, responseString);
+    fetchJson(URL, response, auth->getAccessToken());
 
     // Calendar calendar = {};
     static char calendarId[BUFSIZ];
@@ -121,11 +225,10 @@ void CalManager::fetchCalendarList()
     // calendars = updateVector(calendars, newCalendarVector);
 }
 
-std::vector<CalendarEvent> CalManager::listCalendarEvents(std::string calendarId)
+uint8_t CalManager::listCalendarEvents(CalendarEvent *events, const char* calendarId)
 {
     JsonDocument response;
     String responseString;
-    std::vector<CalendarEvent> newEvents = {};
     
     const char fields[] = "fields=items(id,summary,start,end)";
 
@@ -136,44 +239,25 @@ std::vector<CalendarEvent> CalManager::listCalendarEvents(std::string calendarId
     strftime(buf, sizeof(buf), "%Y-%m-%dT%H:%M:%SZ", tm);
     // String formattedTime = String(buf);
 
+    std::string encodedId = (calendarId != nullptr) ? calendarId : "";
+
     // Replace # with character code (#23)
-    while(calendarId.find("#") != std::string::npos)
+    while(encodedId.find("#") != std::string::npos)
     {
-        calendarId.replace(calendarId.find("#"), 1, "%23");
+        encodedId.replace(encodedId.find("#"), 1, "%23");
     }
 
     // Construct URL
     const std::string URL = "https://www.googleapis.com/calendar/v3/calendars/" +
-        calendarId + "/events?maxResults=" + std::to_string(maxEventCount) +
+        encodedId + "/events?maxResults=" + std::to_string(maxEventCount) +
         "&orderBy=startTime&singleEvents=true&timeMin=" + buf +
         "&" + fields;
 
-    // const std::string params = "/events?maxResults=" + std::to_string(maxEventCount)+ ;
-
-	http.begin(URL.c_str());
-    http.addHeader("Authorization",  "Bearer " + String(auth->getAccessToken().c_str()));
-
-    Serial.println("Request: " + String(URL.c_str()));
-
-    // Get response and code
-    int httpResponseCode = http.GET();
-    responseString = http.getString();
-    
-    printHttpResp(httpResponseCode, responseString);
-    
-    // TODO: Fallback on request error
-    if(httpResponseCode != HTTP_CODE_OK)
-    {
-        http.end();
-        return newEvents;
-    }
-
-    http.end();
-
-    deserializeJson(response, responseString);
+    fetchJson(URL.c_str(), response, auth->getAccessToken());
 
     // Check for keys and save events info
-    for(int i = 0; i < response["items"].size(); i++)
+    uint8_t i;
+    for(i = 0; (i < response["items"].size()) &&  (i < maxEventCount); i++)
     {
         // std::string eventId, summary;
         static char eventId[BUFSIZ];
@@ -221,10 +305,10 @@ std::vector<CalendarEvent> CalManager::listCalendarEvents(std::string calendarId
             allDay = false;
         }
 
-        newEvents.push_back(CalendarEvent(eventId, summary, start, end, allDay));
+        events[i] = CalendarEvent(eventId, summary, start, end, allDay);
     }
 
-    return newEvents;
+    return i;
 }
 
 /**
@@ -234,55 +318,56 @@ std::vector<CalendarEvent> CalManager::listCalendarEvents(std::string calendarId
  */
 void CalManager::fetchEvents()
 {
-    std::vector<CalendarEvent> newEvents = {};
+    CalendarEvent newEvents[maxEventCount];
+    uint8_t newEventCount = 0;
     
     // Fetch events for every enabled calendar
     for(uint8_t calNum = 0; calNum < calendarListSize; calNum++)
     {
         if(calendarList[calNum].isEnabled())
         {
-            std::vector<CalendarEvent> calendarEvents = listCalendarEvents(calendarList[calNum].getId());
-
+            CalendarEvent calendarEvents[maxEventCount];
+            uint8_t eventCount = listCalendarEvents(calendarEvents, calendarList[calNum].getId());
+            
             // Check if calendar has any events
-            if(!calendarEvents.empty())
+            if(eventCount != 0)
             {
-                newEvents.insert(newEvents.end(), calendarEvents.begin(), calendarEvents.end());
-    
-                std::sort(newEvents.begin(), newEvents.end());
-    
-                // Remove unneeded events
-                if(newEvents.size() > maxEventCount)
-                {
-                    newEvents.erase(newEvents.begin() + maxEventCount, newEvents.end());
-                }
+                newEventCount = mergeAndSort(newEvents, calendarEvents, newEventCount, eventCount);
             }
-
         }
     }
 
-
-    if(newEvents != events & !newEvents.empty())
+    // New event list is not empty
+    if(newEventCount != 0)
     {
-        pendingUpdate = true;
-        events = newEvents;
+        // Check and update each element if needed
+        for(uint8_t i = 0; i < newEventCount; i++)
+        {
+            if(!(newEvents[i] == eventList[i]))
+            {
+                eventList[i] = newEvents[i];
+                pendingUpdate = true;
+            }
+        }
+        eventListSize = newEventCount;
     }
 }
 
-const std::vector<Calendar>& CalManager::getCalendarList() const
-{
-    return calendars;
-}
+// const std::vector<Calendar>& CalManager::getCalendarList() const
+// {
+//     return calendars;
+// }
 
-const std::vector<Calendar*> CalManager::getCalendarPtrList()
-{
-    std::vector<Calendar*> out;
+// const std::vector<Calendar*> CalManager::getCalendarPtrList()
+// {
+//     std::vector<Calendar*> out;
     
-    for(Calendar &cal : calendars)
-    {
-        out.push_back(&cal);
-    }
-    return out;
-}
+//     for(Calendar &cal : calendars)
+//     {
+//         out.push_back(&cal);
+//     }
+//     return out;
+// }
 
 bool CalManager::isPendingUpdate()
 {

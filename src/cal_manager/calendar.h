@@ -21,9 +21,9 @@ public:
     void enable() {enabled = true;}
     void disable() {enabled = false;}
 
-    std::string getId() {return calendarId;}
-    std::string getSummary() {return summary;}
-    std::string getDescription() {return description;}
+    const char * getId() const {return calendarId;}
+    const char * getSummary() const {return summary;}
+    const char * getDescription() const {return description;}
     bool isPrimary() {return primary;}
     bool isEnabled() {return enabled;}
 

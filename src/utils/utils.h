@@ -140,34 +140,6 @@ inline char * datetimeStr(time_t time)
     return out;
 }
 
-template <typename T>
-inline std::vector<T> updateVector(std::vector<T> oldVector, std::vector<T> newVector)
-{
-    // Add new elements that are not in old vector
-    for(auto vec : newVector)
-    {
-        if(std::find(oldVector.begin(), oldVector.end(), vec) == oldVector.end())
-        {
-            oldVector.push_back(vec);
-        }
-    }
-
-    // Remove old elements that are not in new vector
-    for(auto it = oldVector.begin(); it != oldVector.end(); )
-    {
-        if(std::find(newVector.begin(), newVector.end(), *it) == newVector.end())
-        {
-            it = oldVector.erase(it);
-        }
-        else
-        {
-            ++it;
-        }
-    }
-
-    return oldVector;
-}
-
 void printHttpResp(int code, String response);
 
 #endif /* UTILS_H */

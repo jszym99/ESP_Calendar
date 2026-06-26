@@ -308,11 +308,14 @@ uint8_t DynamicEventListWidget::getWidth()
 
 void DynamicEventListWidget::update()
 {
-        const std::vector<CalendarEvent> events = calendar->getEvents();
+        // const std::vector<CalendarEvent> events = calendar->getEvents();
 
-        for(uint8_t num = 0; num < maxEventCount; num++)
+        const CalendarEvent *eventsPtr = calendar->getEventsPtr();
+        uint8_t eventCount = calendar->getEventCount();
+
+        for(uint8_t num = 0; num < eventCount; num++)
         {
-            widgets[num].update(&events[num]);
+            widgets[num].update(&eventsPtr[num]);
         }
 }
 

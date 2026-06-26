@@ -3,11 +3,13 @@
 #include <Arduino.h>
 #include <ArduinoJson.h>
 
+constexpr uint16_t MAX_TOKEN_LEN = 256;
+
 class AuthManager
 {
 private:
-    std::string accessToken;
-    std::string refreshToken;
+    char accessToken[MAX_TOKEN_LEN];
+    char refreshToken[MAX_TOKEN_LEN];
     std::string clientId;
     std::string clientSecret;
     uint16_t tokenLifetime;
@@ -23,7 +25,7 @@ public:
 
     bool authenticate();
 
-    std::string getAccessToken() {return accessToken;}
+    const char * getAccessToken() const {return accessToken;}
     uint16_t getTokenLifetime() {return tokenLifetime;}
 };
 

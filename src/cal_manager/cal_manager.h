@@ -14,11 +14,10 @@ constexpr uint8_t maxCalendarCount{10u}; // Max number of calendars (10 should b
 class CalManager
 {
 private:
-    std::vector<CalendarEvent> events = {};
-    std::vector<Calendar> calendars = {};
     Calendar calendarList[maxCalendarCount];
     uint8_t calendarListSize = 0;
-    // CalendarEvent eventList[maxEventCount];
+    CalendarEvent eventList[maxEventCount];
+    uint8_t eventListSize = 0;
     AuthManager *auth;
     bool pendingUpdate = false;
 public:
@@ -43,12 +42,10 @@ public:
      * @note Hard coded primary calendar for now.
      */
     void fetchEvents();
-    std::vector<CalendarEvent> listCalendarEvents(std::string calendarId = "primary");
+    uint8_t listCalendarEvents(CalendarEvent *events, const char* calendarId = "primary");
 
-    const std::vector<CalendarEvent> &getEvents() const {return events;}
-
-    const CalendarEvent *getEventsPtr() const {return &events[0];}
-    const uint8_t getEventCount() const {return events.size();}
+    const CalendarEvent *getEventsPtr() const {return eventList;}
+    const uint8_t getEventCount() const {return eventListSize;}
 
     // Return read-only reference to calendar list for external rendering
     const std::vector<Calendar>& getCalendarList() const;
