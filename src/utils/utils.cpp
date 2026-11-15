@@ -4,63 +4,33 @@
 
 
 /**
- * @brief Parses ISO 8601 to Unix time
- * 
- * @param datetime String containing date and time in ISO 8601 format.
+ * @brief Parses ISO 8601 to Unix time without dynamic memory allocation
+ * * @param datetime Null-terminated char array containing date and time in ISO 8601 format.
  * @return time_t Time in Unix format (seconds since 1970).
  */
-time_t datetimeToSeconds(const String& datetime) {
+time_t datetimeToSeconds(const char* datetime) {
+    // Prevent null pointer crashes
+    if (datetime == nullptr) return 0;
+
     int year = 0, month = 0, day = 0, hour = 0, minute = 0, second = 0;
-    int tIndex = datetime.indexOf('T');
-    String datePart = datetime;
-    String timePart = "";
 
-    if (tIndex != -1) {
-        datePart = datetime.substring(0, tIndex);
-        timePart = datetime.substring(tIndex + 1);
+    // sscanf reads the string according to the format. 
+    // It will safely stop parsing if it hits the end of the string early, 
+    // or if it encounters unmapped characters like 'Z', '.', '+', or '-'.
+    int parsed = sscanf(datetime, "%d-%d-%dT%d:%d:%d", 
+                        &year, &month, &day, &hour, &minute, &second);
 
-        // Remove 'Z' or timezone offset
-        int zIndex = timePart.indexOf('Z');
-        if (zIndex != -1) timePart = timePart.substring(0, zIndex);
-        int plusIndex = timePart.indexOf('+');
-        int minusIndex = timePart.indexOf('-');
-        int tzIndex = (plusIndex != -1) ? plusIndex : ((minusIndex > 0) ? minusIndex : -1);
-        if (tzIndex != -1) timePart = timePart.substring(0, tzIndex);
-        int dotIndex = timePart.indexOf('.');
-        if (dotIndex != -1) timePart = timePart.substring(0, dotIndex);
-    }
+    // We require at least the Year, Month, and Day to be parsed successfully
+    if (parsed < 3) return 0;
 
-    // Parse date
-    int firstDash = datePart.indexOf('-');
-    int secondDash = datePart.indexOf('-', firstDash + 1);
-    if (firstDash == -1 || secondDash == -1) return 0;
-    year = datePart.substring(0, firstDash).toInt();
-    month = datePart.substring(firstDash + 1, secondDash).toInt();
-    day = datePart.substring(secondDash + 1).toInt();
-
-    // Parse time if present
-    if (timePart.length() > 0) {
-        int firstColon = timePart.indexOf(':');
-        int secondColon = timePart.indexOf(':', firstColon + 1);
-        if (firstColon != -1) {
-            hour = timePart.substring(0, firstColon).toInt();
-            if (secondColon != -1) {
-                minute = timePart.substring(firstColon + 1, secondColon).toInt();
-                second = timePart.substring(secondColon + 1).toInt();
-            } else {
-                minute = timePart.substring(firstColon + 1).toInt();
-            }
-        }
-    }
-
-    struct tm tmTime;
+    struct tm tmTime = {0}; // Initialize to zero to clear garbage memory
     tmTime.tm_year = year - 1900;
-    tmTime.tm_mon = month - 1;
+    tmTime.tm_mon  = month - 1;
     tmTime.tm_mday = day;
     tmTime.tm_hour = hour;
-    tmTime.tm_min = minute;
-    tmTime.tm_sec = second;
-    tmTime.tm_isdst = -1;
+    tmTime.tm_min  = minute;
+    tmTime.tm_sec  = second;
+    tmTime.tm_isdst = -1; // Let the system determine Daylight Saving Time
 
     return mktime(&tmTime);
 }

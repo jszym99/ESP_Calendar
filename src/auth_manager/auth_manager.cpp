@@ -18,8 +18,10 @@ AuthManager::AuthManager(std::string _clientId, std::string _clientSecret)
 {
     clientId = _clientId;
     clientSecret = _clientSecret;
-    accessToken = "";
-    refreshToken = "";
+    // accessToken = "";
+    memset(accessToken, 0, sizeof(accessToken)/sizeof(accessToken[0]));
+    // refreshToken = "";
+    memset(refreshToken, 0, sizeof(refreshToken)/sizeof(refreshToken[0]));
     tokenLifetime = 0u;
 }
 
@@ -36,15 +38,15 @@ AuthManager::~AuthManager()
 bool AuthManager::authenticate()
 {
     // Read refresh token from EEPROM if necessary
-    if(refreshToken.empty())
+    if(strlen(refreshToken) == 0)
     {
         readRefreshToken();
     }
 
     // Authenticate with refresh token
-    if (!refreshToken.empty()) {
+    if (strlen(refreshToken) != 0) {
         Serial.print("Refresh token: ");
-        Serial.println(refreshToken.c_str());
+        Serial.println(refreshToken);
         if (authWithRefreshToken()) {
             return true;
         }
@@ -123,12 +125,13 @@ bool AuthManager::authWithDeviceCode()
 
     deserializeJson(response, responseString);
 
-    if(response["access_token"].is<std::string>() && 
-       response["refresh_token"].is<std::string>() &&
+    if(response["access_token"].is<const char *>() && 
+       response["refresh_token"].is<const char *>() &&
        response["expires_in"].is<uint16_t>())
     {
-        accessToken = response["access_token"].as<std::string>();
-        refreshToken = response["refresh_token"].as<std::string>();
+        strcpy(accessToken, response["access_token"].as<const char *>());
+        // refreshToken = response["refresh_token"].as<std::string>();
+        strcpy(refreshToken, response["refresh_token"].as<const char *>());
         tokenLifetime = response["expires_in"];
         saveRefreshToken(); // Save to EEPROM
     }
@@ -170,10 +173,10 @@ bool AuthManager::authWithRefreshToken()
         http.end();
 
         // Save access tokens
-        if(response["access_token"].is<std::string>() &&
+        if(response["access_token"].is<const char *>() &&
            response["expires_in"].is<uint16_t>())
         {
-            accessToken = response["access_token"].as<std::string>();
+            strcpy(accessToken, response["access_token"].as<const char *>());
             tokenLifetime = response["expires_in"];
         }
         else
@@ -196,10 +199,10 @@ bool AuthManager::authWithRefreshToken()
 void AuthManager::saveRefreshToken()
 {
     EEPROM.begin(EEPROM_SIZE);
-    for (int i = 0; i < refreshToken.length(); i++) {
+    for (int i = 0; i < strlen(refreshToken); i++) {
         EEPROM.write(REFRESH_TOKEN_ADDRESS + i, refreshToken[i]);
     }
-    EEPROM.write(REFRESH_TOKEN_ADDRESS + refreshToken.length(), '\0'); // Null-terminate the string
+    EEPROM.write(REFRESH_TOKEN_ADDRESS + strlen(refreshToken), '\0'); // Null-terminate the string
     EEPROM.commit();
 }
 
@@ -210,12 +213,16 @@ void AuthManager::saveRefreshToken()
 void AuthManager::readRefreshToken()
 {
     EEPROM.begin(EEPROM_SIZE);
-    std::string token = "";
+    // std::string token = "";
+    char token[MAX_TOKEN_LEN];
+    memset(token, 0, sizeof(token)/sizeof(token[0]));
     char ch;
     for (int i = 0; i < EEPROM_SIZE; i++) {
         ch = EEPROM.read(REFRESH_TOKEN_ADDRESS + i);
         if (ch == '\0') break; // Stop reading at null terminator
-        token += ch;
+        token[i] = ch;
     }
-    refreshToken = token;
+    // refreshToken = token;
+    Serial.printf("Token: %s\n", token);
+    strcpy(refreshToken, token);
 }

@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <FS.h>
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
@@ -25,34 +26,36 @@ CalManager calendar = CalManager(&oauth);
 TouchButton touchBtn = TouchButton(TOUCH_PIN);
 WebManager web;
 
-void update()
+HeaderWidget header(WidgetConfig{0,0, TFT_WIDTH, 24,TFT_WHITE,TFT_BLACK}, &WiFi);
+DynamicEventListWidget eventList(WidgetConfig{0,header.getHeight(), TFT_WIDTH, TFT_HEIGHT,TFT_WHITE,TFT_BLACK}, &calendar);
+WidgetBase *dynWidgets[] =
 {
-    // Fetch time from NTP
-    while(!timeClient.update()) {
-        timeClient.forceUpdate();
-    }
-
-    // Update system time
-    setTime(timeClient.getEpochTime());
-    Serial.println(datetimeToString(now(), true, false).c_str());
-
-    // Get events
-    calendar.fetchEvents();
-    calendar.showEvents();
-    DisplayManager::displayHeader();
-}
+    &header,
+    &eventList,
+};
+DisplayPage dynPage(dynWidgets, sizeof(dynWidgets)/sizeof(dynWidgets[0]), TFT_WHITE, TFT_BLACK);
+// MonthWidget monthWidget(TFT_WHITE, TFT_BLACK);
+// WidgetBase *monthWidgets[] =
+// {
+//     &header,
+//     &monthWidget,
+// };
+// DisplayPage monthPage{monthWidgets, sizeof(monthWidgets)/sizeof(monthWidgets[0]), TFT_WHITE, TFT_BLACK};
 
 void setup()
 {
+	Serial.begin(115200);
+
     // Initialize hardware
+    DisplayManager::addPage(&dynPage);
+    // DisplayManager::addPage(&monthPage);
     DisplayManager::init();
+
     touchBtn.init();
     
     // Start WiFi connection
 	WiFi.setHostname("ESP32");
 	WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-
-	Serial.begin(115200);
 
     // Initialize web manager (routes can be registered now)
     web.init(&calendar);
@@ -64,8 +67,11 @@ void loop()
     static uint64_t lastUpdate = 0;
     static uint64_t lastToken = 0;
 
-    // Cycle brightness on touch
-    if(touchBtn.isClick())
+    if (touchBtn.isClick())
+    {
+        DisplayManager::nextPage();
+    }
+        else if(touchBtn.isClick(2)) // Cycle brightness on touch
     {
         uint8_t displayBrightness = DisplayManager::getBrightness();
         if(displayBrightness == maxDisplayBrightness)
@@ -88,7 +94,6 @@ void loop()
         Serial.print("Display brightness:");
         Serial.print(((DisplayManager::getBrightness()*100)/maxDisplayBrightness));
         Serial.println("%");
-
     }
 
     // Connected to WiFi
@@ -101,7 +106,7 @@ void loop()
 
         // Start NTP
         timeClient.begin();
-        timeClient.setTimeOffset(7200);
+        timeClient.setTimeOffset(3600);
 
         if(oauth.authenticate())
         {
@@ -141,14 +146,32 @@ void loop()
         // Perform update
         if(lastUpdate + updateTime < millis() || lastUpdate == 0)
         {
-            update();
+                // Fetch time from NTP
+            while(!timeClient.update()) {
+                timeClient.forceUpdate();
+            }
+
+            // Update system time
+            setTime(timeClient.getEpochTime());
+            // Serial.println(datetimeToString(now(), true, false).c_str());
+            Serial.println(datetimeStr(now()));
+        
+            // Get events
+            calendar.fetchEvents();
+            
+            // Update events
+            eventList.update();
+
+            // Update current display page
+            DisplayManager::display();
+            
             lastUpdate = millis();
         }
         // Process web server client connections
         web.handle();
 
         // If web UI requested calendar refresh, perform it here with OAuth token
-        if(web.consumeRefreshRequest())
+        if (web.consumeRefreshRequest())
         {
             calendar.fetchCalendarList();
         }

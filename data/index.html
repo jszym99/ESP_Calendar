@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Device Settings</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --surface: #fff;
+      --border: #e6e9ef;
+      --text: #0f172a;
+      --text-muted: #475569;
+      --text-faint: #94a3b8;
+      --text-id: #667085;
+      --primary-badge: #0ea5a4;
+      --accent: #2563eb;
+      --toggle-off: #e2e8f0;
+      --toggle-on: #22c55e;
+      --btn-secondary-bg: #f8fafc;
+      --btn-secondary-text: #0b1220;
+      --shadow-toggle: rgba(2,6,23,.08);
+    }
+    [data-theme="dark"] {
+      --bg: #0f1117;
+      --surface: #1e2130;
+      --border: #2d3147;
+      --text: #e8eaf0;
+      --text-muted: #94a3b8;
+      --text-faint: #4b5675;
+      --text-id: #6b7ea0;
+      --primary-badge: #2dd4d4;
+      --accent: #3b82f6;
+      --toggle-off: #2d3550;
+      --toggle-on: #22c55e;
+      --btn-secondary-bg: #252840;
+      --btn-secondary-text: #e8eaf0;
+      --shadow-toggle: rgba(0,0,0,.3);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;font-family:Inter,Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text);transition:background .2s,color .2s}
+    header{background:var(--surface);padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+    h1{margin:0;font-size:18px;font-weight:600}
+    .header-controls{display:flex;gap:10px;align-items:center}
+    main{max-width:1100px;margin:18px auto;padding:0 16px}
+    .panel{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:12px}
+    .panel h2{margin:0 0 10px 0;font-size:15px}
+    .cal{display:flex;align-items:flex-start;gap:12px;padding:10px;border-bottom:1px solid var(--border)}
+    .cal:last-child{border-bottom:none}
+    .meta{flex:1;min-width:0}
+    .title{font-weight:600;color:var(--text);overflow-wrap:anywhere;word-break:break-word}
+    .desc{font-size:13px;color:var(--text-muted);margin-top:6px;overflow-wrap:anywhere;word-break:break-word;max-height:6em;overflow:auto}
+    .primary{font-size:12px;color:var(--primary-badge);margin-top:6px;font-weight:700}
+    .cal-id{font-size:12px;color:var(--text-id);margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    /* Toggle switch */
+    .switch{position:relative;display:inline-block;width:50px;height:28px}
+    .switch input{display:none}
+    .slider{position:absolute;cursor:pointer;inset:0;background:var(--toggle-off);border-radius:999px;transition:.18s}
+    .slider:before{content:'';position:absolute;left:4px;top:4px;width:20px;height:20px;background:#fff;border-radius:50%;box-shadow:0 1px 2px var(--shadow-toggle);transition:.18s}
+    input:checked+.slider{background:var(--toggle-on)}
+    input:checked+.slider:before{transform:translateX(22px)}
+    /* Dark mode toggle button */
+    #themeBtn{background:none;border:1px solid var(--border);color:var(--text);padding:6px 12px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:500;display:flex;align-items:center;gap:6px;transition:background .15s,border-color .15s}
+    #themeBtn:hover{background:var(--toggle-off)}
+    /* Buttons */
+    .btn-row{display:flex;gap:10px;justify-content:flex-end;align-items:center;flex-wrap:wrap}
+    button{background:var(--accent);border:none;color:#fff;padding:9px 14px;border-radius:8px;cursor:pointer;font-weight:600;font-size:14px}
+    button.secondary{background:var(--btn-secondary-bg);color:var(--btn-secondary-text);border:1px solid var(--border)}
+    button.danger{background:#dc2626}
+    button:hover{filter:brightness(1.1)}
+    #status{font-size:13px;color:#16a34a;margin-left:4px;display:none}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Device Settings</h1>
+    <div class="header-controls">
+      <button id="themeBtn" type="button" onclick="toggleTheme()">
+        <span id="themeIcon">🌙</span>
+        <span id="themeLabel">Dark</span>
+      </button>
+    </div>
+  </header>
+  <main>
+    <form id="settingsForm" method="post" action="/settings">
+      <div class="panel">
+        <h2>Calendars</h2>
+        <div id="calList"><p style="color:var(--text-faint);font-size:13px">Loading...</p></div>
+      </div>
+      <div class="panel">
+        <h2>Actions</h2>
+        <div class="btn-row">
+          <button type="submit">Save</button>
+          <button type="button" class="secondary" onclick="refreshCalendars()">Refresh calendars</button>
+          <button type="button" class="danger" onclick="goToOTA()">OTA Update</button>
+          <span id="status">Done!</span>
+        </div>
+      </div>
+    </form>
+  </main>
+  <script>
+    // ── Theme ──────────────────────────────────────────────────────────────────
+    const THEME_KEY = 'esp-cal-theme';
+
+    function applyTheme(dark) {
+      document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+      document.getElementById('themeIcon').textContent  = dark ? '☀️' : '🌙';
+      document.getElementById('themeLabel').textContent = dark ? 'Light' : 'Dark';
+    }
+
+    function toggleTheme() {
+      const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+      const next = !isDark;
+      localStorage.setItem(THEME_KEY, next ? 'dark' : 'light');
+      applyTheme(next);
+    }
+
+    // Apply saved theme before paint to avoid flash
+    (function() {
+      const saved = localStorage.getItem(THEME_KEY);
+      const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      applyTheme(saved ? saved === 'dark' : prefersDark);
+    })();
+
+    // ── Calendar state ─────────────────────────────────────────────────────────
+    async function loadState() {
+      const res = await fetch('/api/state');
+      if (!res.ok) return;
+      const data = await res.json();
+
+      const container = document.getElementById('calList');
+      container.innerHTML = '';
+      for (const cal of data.calendars) {
+        const div = document.createElement('div');
+        div.className = 'cal';
+        div.innerHTML = `
+          <div style="display:flex;align-items:center">
+            <label class="switch">
+              <input type="checkbox" name="cal_enabled_${cal.id}" ${cal.enabled ? 'checked' : ''}>
+              <span class="slider"></span>
+            </label>
+          </div>
+          <div class="meta">
+            <div class="title">${cal.summary || '(Unnamed)'}</div>
+            ${cal.description ? `<div class="desc">${cal.description}</div>` : ''}
+            ${cal.primary ? '<div class="primary">Primary calendar</div>' : ''}
+            <div class="cal-id">ID: ${cal.id}</div>
+          </div>`;
+        container.appendChild(div);
+      }
+    }
+
+    async function refreshCalendars() {
+      await fetch('/refresh', { method: 'POST' });
+      const s = document.getElementById('status');
+      s.textContent = 'Refreshing...';
+      s.style.display = 'inline';
+      setTimeout(() => { s.style.display = 'none'; loadState(); }, 2000);
+    }
+
+    function goToOTA() {
+      window.location.href = '/update';
+    }
+
+    loadState();
+  </script>
+</body>
+</html>

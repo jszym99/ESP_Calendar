@@ -10,13 +10,17 @@
  * @param end       End time/date
  * @param allDay    Is event all day
  */
-CalendarEvent::CalendarEvent(std::string id, std::string sum, time_t start, time_t end, bool allDay)
+CalendarEvent::CalendarEvent() : eventId(), summary(), startDate(0), endDate(0), isAllDay(false)
 {
-    eventId = id;
-    summary = sum;
-    startDate = start;
-    endDate = end;
-    isAllDay = allDay;
+}
+
+CalendarEvent::CalendarEvent(const char *id, const char *sum, time_t start, time_t end, bool allDay) :
+startDate(start),
+endDate(end),
+isAllDay(allDay)
+{
+    strcpy(eventId, id);
+    strcpy(summary, sum);
 }
 
 /**
@@ -27,17 +31,32 @@ CalendarEvent::~CalendarEvent()
 {
 }
 
+const char * CalendarEvent::getSummary() const
+{
+    static char out[BUFSIZ];
+    memset(out, 0, sizeof(out)/sizeof(out[0]));
+    strcpy(out, summary);
+    
+    return out;
+}
+
 /**
  * @brief Getter event start date in string format
  * 
- * @return std::string Event date (EEE, dd/MM)
+ * @return const char * Event date (EEE, dd/MM)
  */
-std::string CalendarEvent::getDateStr()
+const char * CalendarEvent::getDateStr() const
 {
-    std::string date = datetimeToString(startDate, false, true); 
+    static char date[BUFSIZ];
+    memset(date, 0, sizeof(date)/sizeof(date[0]));
+    // strcpy(date, datetimeToString(startDate, false, true).c_str());
+    strcat(date, dayShortStr(weekday(startDate)));
+    strcat(date, ", ");
+    strcat(date, dateStr(startDate));
+
     if(now()/SECS_PER_DAY == startDate/SECS_PER_DAY)
     {
-        date += ", Today";
+        strcat(date, ", Today");
     }
     return date;
 }
@@ -45,20 +64,29 @@ std::string CalendarEvent::getDateStr()
 /**
  * @brief Getter for event duration in string format
  * 
- * @return std::string Event duration (All day/Start-End time/Start-End date and time)
+ * @return const char * Event duration (All day/Start-End time/Start-End date and time)
  */
-std::string CalendarEvent::getDurationStr()
+const char * CalendarEvent::getDurationStr() const
 {
+    static char out[BUFSIZ];
+    memset(out, 0, sizeof(out)/sizeof(out[0]));
     if(isAllDay)
     {
-        return "All day";
+        strcpy(out, "All day");
     }
     else if (startDate/SECS_PER_DAY == endDate/SECS_PER_DAY) //Same day
     {
-        return (timeToString(startDate) + " - " + timeToString(endDate));
+        // strcpy(out, (timeToString(startDate) + " - " + timeToString(endDate)).c_str());
+        strcat(out, timeStr(startDate));
+        strcat(out, " - ");
+        strcat(out, timeStr(endDate));
     }
     else
     {
-        return (dateToString(startDate) + " - " + dateToString(endDate));
+        // strcpy(out, (dateToString(startDate) + " - " + dateToString(endDate)).c_str());
+        strcat(out, dateStr(startDate));
+        strcat(out, " - ");
+        strcat(out, dateStr(endDate));
     }
+    return out;
 }
