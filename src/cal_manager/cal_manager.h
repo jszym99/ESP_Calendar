@@ -2,7 +2,6 @@
 #define CAL_MANAGER_H
 #include <Arduino.h>
 #include <TimeLib.h>
-#include <vector>
 #include "auth_manager/auth_manager.h"
 // #include "display_manager/display_manager.h"
 #include "calendar.h"
@@ -47,9 +46,10 @@ public:
     const CalendarEvent *getEventsPtr() const {return eventList;}
     const uint8_t getEventCount() const {return eventListSize;}
 
-    // Return read-only reference to calendar list for external rendering
-    const std::vector<Calendar>& getCalendarList() const;
-    const std::vector<Calendar*> getCalendarPtrList();
+    // Copy calendar list into caller-provided buffer. Returns number of items copied.
+    uint8_t getCalendarList(Calendar *buf, uint8_t bufSize) const;
+    // Copy calendar pointers into caller-provided buffer. Returns number of items copied.
+    uint8_t getCalendarPtrList(Calendar **buf, uint8_t bufSize);
 
     bool isPendingUpdate();
 };

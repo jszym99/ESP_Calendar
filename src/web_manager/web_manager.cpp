@@ -1,56 +1,10 @@
 #include "web_manager.h"
-#include "html_renderer.h"
 #include <WiFi.h>
-#include <utils/utils.h>
+#include <FS.h>
+#include <LittleFS.h>
+#include <ArduinoJson.h>
 
-std::string rgb565ToHex(uint16_t c)
-{
-    uint8_t r5 = (c >> 11) & 0x1F;
-    uint8_t g6 = (c >> 5) & 0x3F;
-    uint8_t b5 = c & 0x1F;
-    uint8_t r8 = (r5 << 3) | (r5 >> 2);
-    uint8_t g8 = (g6 << 2) | (g6 >> 4);
-    uint8_t b8 = (b5 << 3) | (b5 >> 2);
-    char buf[8];
-    snprintf(buf, sizeof(buf), "#%02X%02X%02X", r8, g8, b8);
-    return std::string(buf);
-}
-
-uint16_t hexTo565(std::string hex)
-{
-    long c = strtol(hex.c_str(), NULL, 16);
-    uint8_t r = (c >> 16) & 0xFF;
-    uint8_t g = (c >> 8) & 0xFF;
-    uint8_t b = c & 0xFF;
-    return ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3);
-}
-
- // Helper: normalize and validate hex color string (allow leading '#')
-std::string normalizeHex(String s)
-{
-    s.trim();
-    if(s.startsWith("#")) s = s.substring(1);
-    // convert to uppercase for consistency (not required)
-    for(size_t i = 0; i < s.length(); ++i) s[i] = toupper(s[i]);
-    return s.c_str();
-};
-
-bool isValidHex6(const std::string &s)
-{
-    if(s.length() != 6) return false;
-    for(size_t i = 0; i < 6; ++i)
-    {
-        char c = s[i];
-        bool ok = (c >= '0' && c <= '9') || (c >= 'A' && c <= 'F');
-        if(!ok) return false;
-    }
-    return true;
-};
-
-
-WebManager::WebManager()
-{
-}
+WebManager::WebManager() {}
 
 WebManager::~WebManager()
 {
@@ -60,137 +14,114 @@ WebManager::~WebManager()
 void WebManager::init(CalManager *calManager)
 {
     cal = calManager;
+
+    if (!LittleFS.begin(true)) {
+        Serial.println("WebManager: LittleFS mount failed");
+    } else {
+        Serial.println("WebManager: LittleFS mounted");
+    }
+
     registerRoutes();
 }
 
 void WebManager::registerRoutes()
 {
     // Redirect root to settings page
-    server.on("/", [this]() {
+    server.on("/", HTTP_GET, [this]() {
         server.sendHeader("Location", "/settings");
         server.send(303);
     });
 
-    server.on("/health", [this](){
+    server.on("/health", HTTP_GET, [this]() {
         server.sendHeader("Cache-Control", "no-store");
         server.send(200, "text/plain", "OK");
     });
 
-    // Settings page - show form
+    // Settings page — serve static HTML from LittleFS
     server.on("/settings", HTTP_GET, [this]() {
+        File f = LittleFS.open("/index.html", "r");
+        if (!f) {
+            server.send(500, "text/plain", "index.html not found on filesystem");
+            return;
+        }
+        server.streamFile(f, "text/html");
+        f.close();
+    });
+
+    // API: return calendar state as JSON
+    server.on("/api/state", HTTP_GET, [this]() {
+        if (!cal) {
+            server.send(500, "application/json", "{\"error\":\"not ready\"}");
+            return;
+        }
+
+        JsonDocument doc;
+        Calendar calendars[maxCalendarCount];
+        uint8_t count = cal->getCalendarList(calendars, maxCalendarCount);
+
+        JsonArray arr = doc["calendars"].to<JsonArray>();
+        for (uint8_t i = 0; i < count; i++) {
+            JsonObject obj = arr.add<JsonObject>();
+            obj["id"]          = calendars[i].getId();
+            obj["summary"]     = calendars[i].getSummary();
+            obj["description"] = calendars[i].getDescription();
+            obj["primary"]     = calendars[i].isPrimary();
+            obj["enabled"]     = calendars[i].isEnabled();
+        }
+
+        String out;
+        serializeJson(doc, out);
+        server.sendHeader("Cache-Control", "no-store");
+        server.send(200, "application/json", out);
+    });
+
+    // Settings POST — update calendar toggles
+    server.on("/settings", HTTP_POST, [this]() {
         if (!cal) {
             server.send(500, "text/plain", "CalManager not initialized");
             return;
         }
 
-        std::string primaryHex = "#FFFFFF";
-        std::string bgHex = "#000000";
-        
-        // DisplayManager stores colors as 16-bit RGB565; convert to #RRGGBB for the web UI
-        primaryHex = rgb565ToHex(DisplayManager::getPrimaryColor());
-        bgHex = rgb565ToHex(DisplayManager::getBackgroundColor());
-
-        std::string html = HtmlRenderer::renderSettingsPage(cal->getCalendarList(), primaryHex, bgHex);
-        server.send(200, "text/html; charset=utf-8", html.c_str());
-    });
-
-    // Settings handler - update calendar enabled/primary and colors
-    server.on("/settings", HTTP_POST, [this]() {
-        if(!cal)
-        {
-            server.send(500, "text/plain", "CalManager not initialized");
-            return;
-        }
+        Calendar *calPtrs[maxCalendarCount];
+        uint8_t count = cal->getCalendarPtrList(calPtrs, maxCalendarCount);
 
         bool toggled = false;
-
-        for(Calendar * const c : cal->getCalendarPtrList())
-        {
-            std::string argName = "cal_enabled_" + c->getId();
-            if(server.hasArg(argName.c_str()))
-            {
-                toggled = !c->isEnabled() ? true : toggled;
-                c->enable();
-            }
-            else
-            {
-                toggled = c->isEnabled() ? true : toggled;
-                c->disable();
-            }
+        for (uint8_t i = 0; i < count; i++) {
+            std::string argName = std::string("cal_enabled_") + calPtrs[i]->getId();
+            bool nowEnabled = server.hasArg(argName.c_str());
+            if (nowEnabled != calPtrs[i]->isEnabled()) toggled = true;
+            nowEnabled ? calPtrs[i]->enable() : calPtrs[i]->disable();
         }
-
-        if(toggled)
-        {
-            cal->fetchEvents();
-            // cal->showEvents();
-        }
-
-        // Update colors
-        if(server.hasArg("primaryColor") || server.hasArg("bgColor"))
-        {
-            bool changed = false;
-            if(server.hasArg("primaryColor"))
-            {
-                std::string s = normalizeHex(server.arg("primaryColor")).c_str();
-                if(isValidHex6(s))
-                {
-                    uint16_t col = hexTo565(s);
-                    
-                    if(DisplayManager::getPrimaryColor() != col)
-                    {
-                        changed = true;
-                    }
-
-                    DisplayManager::setPrimaryColor(col);
-                }
-            }
-            if(server.hasArg("bgColor"))
-            {
-                std::string s = normalizeHex(server.arg("bgColor")).c_str();
-                if(isValidHex6(s))
-                {
-                    uint16_t col = hexTo565(s);
-
-                    if(DisplayManager::getBackgroundColor() != col)
-                    {
-                        changed = true;
-                    }
-
-                    DisplayManager::setBackgroundColor(col);
-                }
-            }
-
-            if(changed) {
-                DisplayManager::display(); // Perform refresh if any color changed
-            }
-        }
+        if (toggled) cal->fetchEvents();
 
         server.sendHeader("Location", "/settings");
         server.send(303);
     });
 
-    // Refresh endpoint - set flag for main loop to call calendar.fetchCalendarList
+    // Refresh endpoint
     server.on("/refresh", HTTP_POST, [this]() {
         pendingRefresh = true;
-        server.sendHeader("Location", "/settings");
-        server.send(303);
+        server.sendHeader("Cache-Control", "no-store");
+        server.send(200, "text/plain", "OK");
     });
 }
 
 void WebManager::start()
 {
+    ElegantOTA.begin(&server);
     server.begin();
+    Serial.println("WebManager: HTTP server started (ElegantOTA at /update)");
 }
 
 void WebManager::handle()
 {
     server.handleClient();
+    ElegantOTA.loop();
 }
 
 bool WebManager::consumeRefreshRequest()
 {
-    if(pendingRefresh)
-    {
+    if (pendingRefresh) {
         pendingRefresh = false;
         return true;
     }

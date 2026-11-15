@@ -3,7 +3,7 @@
 #include <ArduinoJson.h>
 #include <NTPClient.h>
 #include <WiFiUdp.h>
-#include <WiFiClient.h>
+#include <WiFiClientSecure.h>
 #include <StreamUtils.h>
 #include "utils/utils.h"
 
@@ -191,10 +191,10 @@ void CalManager::fetchCalendarList()
     }
 
     // Synchronize calendar enabled/disabled flag
-    for(uint8_t oldCalNum; oldCalNum < calendarListSize; oldCalNum++)
+    for(uint8_t oldCalNum = 0; oldCalNum < calendarListSize; oldCalNum++)
     {
         // Check if calendar is in new list
-        for(uint8_t newCalNum; newCalNum < newCalendarListSize; newCalNum++)
+        for(uint8_t newCalNum = 0; newCalNum < newCalendarListSize; newCalNum++)
         {
             // If present update enable/disable flag
             if(calendarList[oldCalNum] == newCalendarList[newCalNum])
@@ -217,7 +217,7 @@ void CalManager::fetchCalendarList()
     calendarListSize = newCalendarListSize;
     
     // Copy new calendar data to the object list
-    for(uint8_t newCalNum; newCalNum < newCalendarListSize; newCalNum++)
+    for(uint8_t newCalNum = 0; newCalNum < newCalendarListSize; newCalNum++)
     {
         calendarList[newCalNum] = newCalendarList[newCalNum];
     }
@@ -374,4 +374,22 @@ bool CalManager::isPendingUpdate()
     bool out = pendingUpdate;
     pendingUpdate = false;
     return out;
+}
+
+uint8_t CalManager::getCalendarList(Calendar *buf, uint8_t bufSize) const
+{
+    uint8_t count = calendarListSize < bufSize ? calendarListSize : bufSize;
+    for (uint8_t i = 0; i < count; i++) {
+        buf[i] = calendarList[i];
+    }
+    return count;
+}
+
+uint8_t CalManager::getCalendarPtrList(Calendar **buf, uint8_t bufSize)
+{
+    uint8_t count = calendarListSize < bufSize ? calendarListSize : bufSize;
+    for (uint8_t i = 0; i < count; i++) {
+        buf[i] = &calendarList[i];
+    }
+    return count;
 }

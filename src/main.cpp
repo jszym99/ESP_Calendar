@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <FS.h>
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
@@ -11,7 +12,7 @@
 #include "display_manager/display_manager.h"
 #include "touch_button/touch_button.h"
 #include "utils/utils.h"
-// #include "web_manager/web_manager.h"
+#include "web_manager/web_manager.h"
 
 #define TOUCH_PIN T9
 
@@ -23,7 +24,7 @@ NTPClient timeClient(ntpUDP);
 AuthManager oauth = AuthManager(CLIENT_ID, CLIENT_SECRET); // TODO: Read cliend ID and Secret from EEPROM
 CalManager calendar = CalManager(&oauth);
 TouchButton touchBtn = TouchButton(TOUCH_PIN);
-// WebManager web;
+WebManager web;
 
 HeaderWidget header(WidgetConfig{0,0, TFT_WIDTH, 24,TFT_WHITE,TFT_BLACK}, &WiFi);
 DynamicEventListWidget eventList(WidgetConfig{0,header.getHeight(), TFT_WIDTH, TFT_HEIGHT,TFT_WHITE,TFT_BLACK}, &calendar);
@@ -57,7 +58,7 @@ void setup()
 	WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 
     // Initialize web manager (routes can be registered now)
-    // web.init(&calendar);
+    web.init(&calendar);
 }
 
 void loop()
@@ -115,7 +116,7 @@ void loop()
         calendar.fetchCalendarList();
 
         // Start HTTP server once we have WiFi
-        // web.start();
+        web.start();
 
 		isConnected = true;
 	}
@@ -167,13 +168,13 @@ void loop()
             lastUpdate = millis();
         }
         // Process web server client connections
-        // web.handle();
+        web.handle();
 
         // If web UI requested calendar refresh, perform it here with OAuth token
-        // if(web.consumeRefreshRequest())
-        // {
-        //     calendar.fetchCalendarList();
-        // }
+        if (web.consumeRefreshRequest())
+        {
+            calendar.fetchCalendarList();
+        }
     }
     else // WiFi not connected - AP mode
     {

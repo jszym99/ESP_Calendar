@@ -1,9 +1,10 @@
 #ifndef WEB_MANAGER_H
 #define WEB_MANAGER_H
 
+#include <FS.h>
 #include <WebServer.h>
+#include <ElegantOTA.h>
 #include "cal_manager/cal_manager.h"
-#include "display_manager/display_manager.h"
 
 class WebManager {
 public:
@@ -14,15 +15,14 @@ public:
     void start();
     // Process incoming client connections (call regularly from loop())
     void handle();
+    // If a refresh was requested via web UI, consume the flag and return true once
+    bool consumeRefreshRequest();
 
 private:
     WebServer server{80};
     CalManager *cal = nullptr;
-    void registerRoutes();
     bool pendingRefresh = false;
-public:
-    // If a refresh was requested via web UI, consume the flag and return true once
-    bool consumeRefreshRequest();
+    void registerRoutes();
 };
 
 #endif // WEB_MANAGER_H
