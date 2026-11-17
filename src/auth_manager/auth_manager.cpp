@@ -217,11 +217,12 @@ void AuthManager::readRefreshToken()
     char token[MAX_TOKEN_LEN];
     memset(token, 0, sizeof(token)/sizeof(token[0]));
     char ch;
-    for (int i = 0; i < EEPROM_SIZE; i++) {
+    for (int i = 0; i < MAX_TOKEN_LEN; i++) {
         ch = EEPROM.read(REFRESH_TOKEN_ADDRESS + i);
         if (ch == '\0') break; // Stop reading at null terminator
         token[i] = ch;
     }
+    token[MAX_TOKEN_LEN-1] = '\0';
     // refreshToken = token;
     Serial.printf("Token: %s\n", token);
     strcpy(refreshToken, token);
